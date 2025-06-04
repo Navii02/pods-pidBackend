@@ -266,9 +266,9 @@ const AssignTag = async (req, res) => {
     if (connection) connection.release();
   }
 };
-
+ let connection
  const getAssignedTags = async (req, res) => {
-  const connection = await pool.getConnection();
+   connection = await pool.getConnection();
   await connection.beginTransaction();
 
   try {
@@ -314,4 +314,24 @@ const AssignTag = async (req, res) => {
 };
 
 
-module.exports = { AddTag, getTags, deleteTag,updateTag,AssignTag,getAssignedTags };
+const getDocumentsByTag = async (req,res) => {
+  const tagId = req.params.tagId
+  let connection
+  try {
+       connection = await pool.getConnection();
+
+    const [rows] = await connection.query(`
+      SELECT DISTINCT d.documentId, d.title, d.number
+      FROM SpidTags st
+      JOIN Documents d ON st.file_id = d.documentId
+      WHERE st.tag_id = ?
+    `, [tagId]);
+    res.status(200).json(rows)
+  } catch (error) {
+    console.error('Error fetching documents by tag:', error);
+    return { status: 500, error: 'Failed to fetch documents' };
+  }
+};
+
+
+module.exports = { AddTag, getTags, deleteTag,updateTag,AssignTag,getAssignedTags,getDocumentsByTag };

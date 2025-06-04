@@ -17,7 +17,7 @@ const {
   AssignFlag,
   getFlags,
 } = require("../controllers/spidcontrollers");
-const { AddTag, getTags, deleteTag, updateTag, AssignTag, getAssignedTags } = require("../controllers/TagController");
+const { AddTag, getTags, deleteTag, updateTag, AssignTag, getAssignedTags, getDocumentsByTag } = require("../controllers/TagController");
 const router = express.Router();
 
 router.post("/createproject", CreateProject);
@@ -42,6 +42,7 @@ router.put('/update-tag/:id',updateTag)
 
 router.post('/assign-tag',AssignTag)
 router.get('/get-assigned-tags/:id',getAssignedTags)
+router.get('/tags/:tagId/documents',getDocumentsByTag)
 
 
 router.post('/assign-flag',AssignFlag)

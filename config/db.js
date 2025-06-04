@@ -225,8 +225,7 @@ const createTables = async () => {
         tag_id VARCHAR(50) NOT NULL,
         unique_id VARCHAR(100) NOT NULL,
         file_id VARCHAR(50) NOT NULL,
-        assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY unique_tag_assignment (tag_id, unique_id, file_id)
+        assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB;
     `);
     await connection.query(`CREATE TABLE IF NOT EXISTS Flags (
