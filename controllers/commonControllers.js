@@ -8,11 +8,8 @@ const generateCustomID = (prefix) => {
 };
 
 const CreateProject = async (req, res) => {
-  const { projectName, projectNumber, projectDescription, projectPath } =
-    req.body;
-  console.log(projectName);
+  const { projectName, projectNumber, projectDescription, projectPath } = req.body;
 
-  //   // Validate required fields
   if (!projectName) {
     return res.status(400).json({
       success: false,
@@ -24,11 +21,12 @@ const CreateProject = async (req, res) => {
   try {
     connection = await pool.getConnection();
 
-    // Check for existing project by name
+    // Check for existing project
     const [existingProjects] = await connection.query(
       "SELECT * FROM projects WHERE projectName = ?",
       [projectName.trim()]
     );
+
     if (existingProjects.length > 0) {
       return res.status(409).json({
         success: false,
@@ -38,18 +36,20 @@ const CreateProject = async (req, res) => {
 
     const projectId = generateCustomID("PRJ");
 
-    // Insert project into database
-    const [result] = await connection.query(
+    // Insert the new project
+    await connection.query(
       "INSERT INTO projects (projectId, projectName, projectNumber, projectDescription, projectPath) VALUES (?, ?, ?, ?, ?)",
       [
         projectId,
         projectName.trim(),
-        projectNumber ? projectNumber.trim() : null,
-        projectDescription ? projectDescription.trim() : null,
-        projectPath ? projectPath.trim() : null,
+        projectNumber?.trim() || null,
+        projectDescription?.trim() || null,
+        projectPath?.trim() || null,
       ]
     );
-        const defaultStatuses = [
+
+    // Insert default statuses
+    const defaultStatuses = [
       { statusname: "open", color: "#ff0000" },
       { statusname: "closed", color: "#00ff00" },
     ];
@@ -62,14 +62,16 @@ const CreateProject = async (req, res) => {
       );
     }
 
+    // Fetch and return the newly created project
+    const [projectRows] = await connection.query(
+      "SELECT * FROM projects WHERE projectId = ?",
+      [projectId]
+    );
+
     res.status(201).json({
       success: true,
       message: "Project created successfully",
-      projectId,
-      projectName: projectName.trim(),
-      projectNumber: projectNumber ? projectNumber.trim() : null,
-      projectDescription: projectDescription ? projectDescription.trim() : null,
-      projectPath: projectPath ? projectPath.trim() : null,
+      project: projectRows[0],
     });
   } catch (error) {
     console.error("Error saving project:", error);
@@ -78,10 +80,11 @@ const CreateProject = async (req, res) => {
       message: "Internal server error",
       error: error.message,
     });
-  }finally {
+  } finally {
     if (connection) connection.release();
-  } 
+  }
 };
+
 const UpdateProject = async (req, res) => {
   const { projectId, projectName, projectNumber, projectDescription, projectPath } = req.body;
 
@@ -222,7 +225,7 @@ const getprojects = async (req, res) => {
     let connection;
     connection = await pool.getConnection();
     const [row] = await connection.query("SELECT * FROM projects ");
-    //console.log(row);
+    console.log(row);
     res.status(200).json({ row });
   } catch (error) {
     res.status(500).json("Internal server error");
