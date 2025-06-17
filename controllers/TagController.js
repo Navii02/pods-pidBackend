@@ -10,9 +10,9 @@ const generateCustomID = (prefix) => {
 const AddTag = async (req, res) => {
   let connection;
   console.log(req.body);
-  
+
   try {
-    const { tagNumber, parentTag, name, type, model,project_id } = req.body;
+    const { tagNumber, parentTag, name, type, model, project_id } = req.body;
 
     // Validate required fields
     if (!tagNumber || !name || !type) {
@@ -33,14 +33,22 @@ const AddTag = async (req, res) => {
     await connection.query(
       `INSERT INTO Tags (tagId, number, name, parenttag, type, filename,projectId)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [tagId, tagNumber, name, parentTag || null, type, model || null,project_id]
+      [
+        tagId,
+        tagNumber,
+        name,
+        parentTag || null,
+        type,
+        model || null,
+        project_id,
+      ]
     );
 
     // Insert into TagInfo table
     await connection.query(
       `INSERT INTO TagInfo (projectId,tagId, tag, type)
        VALUES (?, ?, ?, ?)`,
-      [project_id,tagId, name, type]
+      [project_id, tagId, name, type]
     );
 
     // Conditional inserts based on type
@@ -48,19 +56,19 @@ const AddTag = async (req, res) => {
       await connection.query(
         `INSERT INTO LineList (projectId,tagId, tag)
          VALUES (?,?, ?)`,
-        [project_id,tagId, name]
+        [project_id, tagId, name]
       );
     } else if (type.toLowerCase() === "equipment") {
       await connection.query(
         `INSERT INTO EquipmentList (projectId,tagId, tag)
          VALUES (?,?, ?)`,
-        [project_id,tagId, name]
+        [project_id, tagId, name]
       );
     } else if (type.toLowerCase() === "valve") {
       await connection.query(
         `INSERT INTO ValveList (projectId,tagId, tag )
-         VALUES (?,?,?, ?)`,
-        [project_id,tagId, name]
+         VALUES (?,?,?)`,
+        [project_id, tagId, name]
       );
     }
 
@@ -79,14 +87,17 @@ const AddTag = async (req, res) => {
 
 const getTags = async (req, res) => {
   const projectId = req.params.id;
-      let connection;
+  let connection;
   try {
     connection = await pool.getConnection();
-    const [Tags] = await connection.query("SELECT * from Tags WHERE projectId = ?" , [projectId]);
+    const [Tags] = await connection.query(
+      "SELECT * from Tags WHERE projectId = ?",
+      [projectId]
+    );
     res.status(200).json(Tags);
   } catch (error) {
     res.status(500).json("Internal server error");
-  }finally {
+  } finally {
     connection.release();
   }
 };
@@ -113,7 +124,6 @@ const deleteTag = async (req, res) => {
       });
     }
 
-
     await connection.query("DELETE FROM Tags WHERE tagId = ?", [tagId]);
 
     res.status(200).json({
@@ -126,46 +136,40 @@ const deleteTag = async (req, res) => {
       success: false,
       message: "Failed to delete tag",
     });
-  }finally {
+  } finally {
     if (connection) connection.release();
   }
 };
 
-
-
 const updateTag = async (req, res) => {
   const { id } = req.params;
-  const tagId = id
+  const tagId = id;
   console.log(req.body);
-  
-  const { number, name, type, parentTag,filename } = req.body;
+
+  const { number, name, type, parentTag, filename } = req.body;
   let connection;
 
   try {
-
     if (!number || !name || !type) {
       return res.status(400).json({
         success: false,
-        message: 'Number, name, and type are required fields'
+        message: "Number, name, and type are required fields",
       });
     }
 
     connection = await pool.getConnection();
 
- 
     const [existingTag] = await connection.query(
-      'SELECT * FROM Tags WHERE tagId = ?',
+      "SELECT * FROM Tags WHERE tagId = ?",
       [tagId]
     );
 
     if (existingTag.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Tag not found'
+        message: "Tag not found",
       });
     }
-
-
 
     await connection.query(
       `UPDATE Tags 
@@ -174,26 +178,23 @@ const updateTag = async (req, res) => {
       [number, name, type, parentTag, filename || null, tagId]
     );
 
-
     const [updatedTag] = await connection.query(
-      'SELECT * FROM Tags WHERE tagId = ?',
+      "SELECT * FROM Tags WHERE tagId = ?",
       [tagId]
     );
 
     res.status(200).json({
       success: true,
-      message: 'Tag updated successfully',
-      data: updatedTag[0]
+      message: "Tag updated successfully",
+      data: updatedTag[0],
     });
-
   } catch (error) {
-    console.error('Error updating tag:', error);
+    console.error("Error updating tag:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update tag',
-   
+      message: "Failed to update tag",
     });
-  }finally {
+  } finally {
     if (connection) connection.release();
   }
 };
@@ -204,7 +205,13 @@ const AssignTag = async (req, res) => {
   const { tagId, uniqueIds, fileId } = req.body;
 
   // Validate input
-  if (!tagId || !uniqueIds || !Array.isArray(uniqueIds) || uniqueIds.length === 0 || !fileId) {
+  if (
+    !tagId ||
+    !uniqueIds ||
+    !Array.isArray(uniqueIds) ||
+    uniqueIds.length === 0 ||
+    !fileId
+  ) {
     return res.status(400).json({
       success: false,
       message: "tagId, fileId, and a non-empty array of uniqueIds are required",
@@ -224,7 +231,9 @@ const AssignTag = async (req, res) => {
     );
 
     const existingUniqueIds = existing.map((row) => row.unique_id);
-    const newUniqueIds = uniqueIds.filter((id) => !existingUniqueIds.includes(id));
+    const newUniqueIds = uniqueIds.filter(
+      (id) => !existingUniqueIds.includes(id)
+    );
 
     // Insert new assignments
     if (newUniqueIds.length > 0) {
@@ -269,9 +278,9 @@ const AssignTag = async (req, res) => {
     if (connection) connection.release();
   }
 };
- let connection
- const getAssignedTags = async (req, res) => {
-   connection = await pool.getConnection();
+let connection;
+const getAssignedTags = async (req, res) => {
+  connection = await pool.getConnection();
   await connection.beginTransaction();
 
   try {
@@ -297,7 +306,7 @@ const AssignTag = async (req, res) => {
       if (!tagGroups[tag_id]) {
         tagGroups[tag_id] = {
           tag_id,
-          tagName:name,
+          tagName: name,
           uniqueIds: [],
         };
         tagMap.push(tagGroups[tag_id]);
@@ -311,30 +320,493 @@ const AssignTag = async (req, res) => {
     await connection.rollback();
     console.error("Error fetching tags:", error);
     res.status(500).json({ error: "Failed to fetch tags" });
-  }finally {
+  } finally {
     if (connection) connection.release();
   }
 };
 
-
-const getDocumentsByTag = async (req,res) => {
-  const tagId = req.params.tagId
-  let connection
+const getDocumentsByTag = async (req, res) => {
+  const tagId = req.params.tagId;
+  let connection;
   try {
-       connection = await pool.getConnection();
+    connection = await pool.getConnection();
 
-    const [rows] = await connection.query(`
+    const [rows] = await connection.query(
+      `
       SELECT DISTINCT d.documentId, d.title, d.number
       FROM SpidTags st
       JOIN Documents d ON st.file_id = d.documentId
       WHERE st.tag_id = ?
-    `, [tagId]);
-    res.status(200).json(rows)
+    `,
+      [tagId]
+    );
+    res.status(200).json(rows);
   } catch (error) {
-    console.error('Error fetching documents by tag:', error);
-    return { status: 500, error: 'Failed to fetch documents' };
+    console.error("Error fetching documents by tag:", error);
+    return { status: 500, error: "Failed to fetch documents" };
+  }
+};
+//LineList
+
+const GetLineList = async (req, res) => {
+  const projectId = req.params.id;
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [LineList] = await connection.query(
+      "SELECT * from LineList WHERE projectId = ?",
+      [projectId]
+    );
+    res.status(200).json(LineList);
+  } catch (error) {
+    res.status(500).json("Internal server error");
+  } finally {
+    connection.release();
+  }
+};
+
+const EditLineList = async (req, res) => {
+  let connection;
+  try {
+    const {
+      projectId,
+      tagId,
+      tag,
+      fluidCode,
+      lineId,
+      medium,
+      lineSizeIn,
+      lineSizeNb,
+      pipingSpec,
+      insType,
+      insThickness,
+      heatTrace,
+      lineFrom,
+      lineTo,
+      pnid,
+      pipingIso,
+      pipingStressIso,
+      maxOpPress,
+      maxOpTemp,
+      dsgnPress,
+      minDsgnTemp,
+      maxDsgnTemp,
+      testPress,
+      testMedium,
+      testMediumPhase,
+      massFlow,
+      volFlow,
+      density,
+      velocity,
+      paintSystem,
+      ndtGroup,
+      chemCleaning,
+      pwht,
+    } = req.body;
+
+    // Validate required fields
+    if (!projectId || !tag) {
+      return res
+        .status(400)
+        .json({ error: "projectId and tag are required fields" });
+    }
+
+    // Get connection from pool
+    connection = await pool.getConnection();
+
+    // Prepare the update query
+    const updateQuery = `
+      UPDATE LineList 
+      SET 
+        tagId = ?,
+        fluidCode = ?,
+        lineId = ?,
+        medium = ?,
+        lineSizeIn = ?,
+        lineSizeNb = ?,
+        pipingSpec = ?,
+        insType = ?,
+        insThickness = ?,
+        heatTrace = ?,
+        lineFrom = ?,
+        lineTo = ?,
+        pnid = ?,
+        pipingIso = ?,
+        pipingStressIso = ?,
+        maxOpPress = ?,
+        maxOpTemp = ?,
+        dsgnPress = ?,
+        minDsgnTemp = ?,
+        maxDsgnTemp = ?,
+        testPress = ?,
+        testMedium = ?,
+        testMediumPhase = ?,
+        massFlow = ?,
+        volFlow = ?,
+        density = ?,
+        velocity = ?,
+        paintSystem = ?,
+        ndtGroup = ?,
+        chemCleaning = ?,
+        pwht = ?
+      WHERE tag = ? AND projectId = ?;
+    `;
+
+    // Execute the update query
+    const [result] = await connection.query(updateQuery, [
+      tagId || null,
+      fluidCode || null,
+      lineId || null,
+      medium || null,
+      lineSizeIn || null,
+      lineSizeNb || null,
+      pipingSpec || null,
+      insType || null,
+      insThickness || null,
+      heatTrace || null,
+      lineFrom || null,
+      lineTo || null,
+      pnid || null,
+      pipingIso || null,
+      pipingStressIso || null,
+      maxOpPress || null,
+      maxOpTemp || null,
+      dsgnPress || null,
+      minDsgnTemp || null,
+      maxDsgnTemp || null,
+      testPress || null,
+      testMedium || null,
+      testMediumPhase || null,
+      massFlow || null,
+      volFlow || null,
+      density || null,
+      velocity || null,
+      paintSystem || null,
+      ndtGroup || null,
+      chemCleaning || null,
+      pwht || null,
+      tag,
+      projectId,
+    ]);
+
+    // Check if any rows were affected
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ error: "No record found with the given tag and projectId" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Line list updated successfully",
+      affectedRows: result.affectedRows,
+    });
+  } catch (error) {
+    console.error("Error updating LineList:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message,
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+//equipmentList
+
+const GetequipmentList = async (req, res) => {
+  const projectId = req.params.id;
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [EquipmentList] = await connection.query(
+      "SELECT * from EquipmentList WHERE projectId = ?",
+      [projectId]
+    );
+
+    res.status(200).json(EquipmentList);
+  } catch (error) {
+    res.status(500).json("Internal server error");
+  } finally {
+    connection.release();
+  }
+};
+const EditEquipmentList = async (req, res) => {
+  let connection;
+  try {
+    const {
+      projectId,
+      tagId,
+      tag,
+      descr,
+      qty,
+      capacity,
+      type,
+      materials,
+      capacityDuty,
+      dims,
+      dsgnPress,
+      opPress,
+      dsgnTemp,
+      opTemp,
+      dryWeight,
+      opWeight,
+      pnid,
+      supplier,
+      remarks,
+      initStatus,
+      revision,
+      revisionDate,
+    } = req.body;
+
+    // Validate required fields
+    if (!projectId || !tag) {
+      return res
+        .status(400)
+        .json({ error: "projectId and tag are required fields" });
+    }
+
+    // Get connection from pool
+    connection = await pool.getConnection();
+
+    // Prepare the update query
+    const updateQuery = `
+      UPDATE EquipmentList 
+      SET 
+        tagId = ?,
+        descr = ?,
+        qty = ?,
+        capacity = ?,
+        type = ?,
+        materials = ?,
+        capacityDuty = ?,
+        dims = ?,
+        dsgnPress = ?,
+        opPress = ?,
+        dsgnTemp = ?,
+        opTemp = ?,
+        dryWeight = ?,
+        opWeight = ?,
+        pnid = ?,
+        supplier = ?,
+        remarks = ?,
+        initStatus = ?,
+        revision = ?,
+        revisionDate = ?
+      WHERE tag = ? AND projectId = ?;
+    `;
+
+    // Execute the update query
+    const [result] = await connection.query(updateQuery, [
+      tagId || null,
+      descr || null,
+      qty || null,
+      capacity || null,
+      type || null,
+      materials || null,
+      capacityDuty || null,
+      dims || null,
+      dsgnPress || null,
+      opPress || null,
+      dsgnTemp || null,
+      opTemp || null,
+      dryWeight || null,
+      opWeight || null,
+      pnid || null,
+      supplier || null,
+      remarks || null,
+      initStatus || null,
+      revision || null,
+      revisionDate || null,
+      tag,
+      projectId,
+    ]);
+
+    // Check if any rows were affected
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ error: "No equipment found with the given tag and projectId" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Equipment updated successfully",
+      affectedRows: result.affectedRows,
+    });
+  } catch (error) {
+    console.error("Error updating EquipmentList:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message,
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+//valvelist
+
+const GetValveList = async (req, res) => {
+  const projectId = req.params.id;
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [ValveList] = await connection.query(
+      "SELECT * from valveList WHERE projectId = ?",
+      [projectId]
+    );
+
+    res.status(200).json(ValveList);
+  } catch (error) {
+    res.status(500).json("Internal server error");
+  } finally {
+    connection.release();
+  }
+};
+
+const EditValveList = async (req, res) => {
+  let connection;
+  try {
+    const {
+      projectId,
+      tagId,
+      tag,
+      area,
+      discipline,
+      Systm,
+      function_code,
+      sequence_number,
+      line_id,
+      line_number,
+      pid,
+      isometric,
+      data_sheet,
+      drawings,
+      design_pressure,
+      design_temperature,
+      size,
+      paint_system,
+      purchase_order,
+      supplier,
+      information_status,
+      equipment_status,
+      comment,
+    } = req.body;
+
+    // Validate required fields
+    if (!projectId || !tag) {
+      return res
+        .status(400)
+        .json({ error: "projectId and tag are required fields" });
+    }
+
+    // Get connection from pool
+    connection = await pool.getConnection();
+
+    // Prepare the update query
+    const updateQuery = `
+      UPDATE valveList 
+      SET 
+        area = ?,
+        discipline = ?,
+        Systm = ?,
+        function_code = ?,
+        sequence_number = ?,
+        tagId = ?,
+        line_id = ?,
+        line_number = ?,
+        pid = ?,
+        isometric = ?,
+        data_sheet = ?,
+        drawings = ?,
+        design_pressure = ?,
+        design_temperature = ?,
+        size = ?,
+        paint_system = ?,
+        purchase_order = ?,
+        supplier = ?,
+        information_status = ?,
+        equipment_status = ?,
+        comment = ?
+      WHERE tag = ? AND projectId = ?;
+    `;
+
+    // Execute the update query
+    const [result] = await connection.query(updateQuery, [
+      area || null,
+      discipline || null,
+      Systm || null,
+      function_code || null,
+      sequence_number || null,
+      tagId || null,
+      line_id || null,
+      line_number || null,
+      pid || null,
+      isometric || null,
+      data_sheet || null,
+      drawings || null,
+      design_pressure || null,
+      design_temperature || null,
+      size || null,
+      paint_system || null,
+      purchase_order || null,
+      supplier || null,
+      information_status || null,
+      equipment_status || null,
+      comment || null,
+      tag,
+      projectId,
+    ]);
+
+    // Check if any rows were affected
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ error: "No valve found with the given tag and projectId" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Valve updated successfully",
+      affectedRows: result.affectedRows,
+      updatedValve: {
+        tag,
+        projectId,
+        ...req.body,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating ValveList:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
+  } finally {
+    if (connection) {
+      try {
+        await connection.release();
+      } catch (releaseError) {
+        console.error("Error releasing connection:", releaseError);
+      }
+    }
   }
 };
 
 
-module.exports = { AddTag, getTags, deleteTag,updateTag,AssignTag,getAssignedTags,getDocumentsByTag };
+module.exports = {
+  AddTag,
+  getTags,
+  deleteTag,
+  updateTag,
+  AssignTag,
+  getAssignedTags,
+  getDocumentsByTag,
+  GetLineList,
+  GetequipmentList,
+  GetValveList,
+  EditLineList,
+  EditEquipmentList,
+  EditValveList,
+  
+};

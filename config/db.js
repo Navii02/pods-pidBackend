@@ -89,8 +89,8 @@ const createTables = async () => {
 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS Tags (
-        tagId TEXT NOT NULL,
-        number VARCHAR(767) PRIMARY KEY NOT NULL, 
+        tagId VARCHAR(255) PRIMARY KEY ,
+        number VARCHAR(767) NOT NULL, 
         projectId VARCHAR(36),
         name TEXT NOT NULL,
         parenttag TEXT,
@@ -154,7 +154,8 @@ const createTables = async () => {
         taginfo47 TEXT,
         taginfo48 TEXT,
         taginfo49 TEXT,
-        taginfo50 TEXT
+        taginfo50 TEXT,
+            FOREIGN KEY (tagId) REFERENCES Tags(tagId) ON DELETE CASCADE
       ) ENGINE=InnoDB;
     `);
 
@@ -192,7 +193,8 @@ const createTables = async () => {
         paintSystem TEXT,
         ndtGroup TEXT,
         chemCleaning TEXT,
-        pwht TEXT
+        pwht TEXT,
+            FOREIGN KEY (tagId) REFERENCES Tags(tagId) ON DELETE CASCADE
       ) ENGINE=InnoDB;
     `);
 
@@ -219,9 +221,40 @@ const createTables = async () => {
         remarks TEXT,
         initStatus VARCHAR(50),
         revision VARCHAR(50),
-        revisionDate VARCHAR(50)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        revisionDate VARCHAR(50),
+            FOREIGN KEY (tagId) REFERENCES Tags(tagId) ON DELETE CASCADE
+      ) ENGINE=InnoDB;
     `);
+      await connection.query(`
+    CREATE TABLE IF NOT EXISTS valveList (
+    
+      area VARCHAR(100) DEFAULT NULL,
+      discipline VARCHAR(100) DEFAULT NULL,
+      Systm VARCHAR(100) DEFAULT NULL,
+      function_code VARCHAR(100) DEFAULT NULL,
+      sequence_number VARCHAR(100) DEFAULT NULL,
+       projectId VARCHAR(36),
+        tagId VARCHAR(255),
+        tag VARCHAR(255) PRIMARY KEY,
+      line_id VARCHAR(100) DEFAULT NULL,
+      line_number VARCHAR(100) DEFAULT NULL,
+      pid VARCHAR(100) DEFAULT NULL,
+      isometric VARCHAR(100) DEFAULT NULL,
+      data_sheet VARCHAR(100) DEFAULT NULL,
+      drawings VARCHAR(100) DEFAULT NULL,
+      design_pressure VARCHAR(100) DEFAULT NULL,
+      design_temperature VARCHAR(100) DEFAULT NULL,
+      size VARCHAR(100) DEFAULT NULL,
+      paint_system VARCHAR(100) DEFAULT NULL,
+      purchase_order VARCHAR(100) DEFAULT NULL,
+      supplier VARCHAR(100) DEFAULT NULL,
+      information_status VARCHAR(100) DEFAULT NULL,
+      equipment_status VARCHAR(100) DEFAULT NULL,
+      comment TEXT DEFAULT NULL,
+          FOREIGN KEY (tagId) REFERENCES Tags(tagId) ON DELETE CASCADE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB;
+  `);
 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS SpidTags (

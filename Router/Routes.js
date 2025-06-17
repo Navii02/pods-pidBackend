@@ -28,6 +28,13 @@ const {
   AssignTag,
   getAssignedTags,
   getDocumentsByTag,
+  GetLineList,
+  GetequipmentList,
+  GetValveList,
+  EditLineList,
+  EditEquipmentList,
+  EditValveList,
+  DeleteValveList,
 } = require("../controllers/TagController");
 const {
   AddArea,
@@ -89,9 +96,31 @@ router.get("/get-alltags/:id", getTags);
 router.delete("/delete-tag/:id", deleteTag);
 router.put("/update-tag/:id", updateTag);
 
+
+ router.get('/getline/:id',GetLineList)
+ router.put('/edit-line-list',EditLineList)
+ router.delete('/delete-line-list/:id',deleteTag)
+
+
+
+  router.get('/getequipment/:id',GetequipmentList)
+   router.put('/edit-equipment-list',EditEquipmentList)
+   router.delete('/delete-equipment-list/:id',deleteTag)
+
+
+
+  router.get('/getvalve/:id',GetValveList)
+   router.put('/edit-valve-list',EditValveList)
+   router.delete('/delete-valve-list/:id',deleteTag)
+
+
+
+
+
 router.post("/assign-tag", AssignTag);
 router.get("/get-assigned-tags/:id", getAssignedTags);
 router.get("/tags/:tagId/documents", getDocumentsByTag);
+
 
 router.post("/assign-flag", AssignFlag);
 router.get("/get-assigned-flags/:id", getFlags);
