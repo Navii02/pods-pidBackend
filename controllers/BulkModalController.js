@@ -312,4 +312,177 @@ const saveChangedUnassigned = async (req, res) => {
   }
 };
 
-module.exports = { uploadbulkModal,saveBulkModal,saveChangedUnassigned };
+const GetUnassignedmodels = async (req, res) => {
+  let connection;
+  try {
+
+    const  projectId  = req.params.id;
+
+    // Validate projectId
+    if (!projectId) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Project ID is required" 
+      });
+    }
+
+      connection = await pool.getConnection();
+
+  
+    const [results] = await connection.query(`
+      SELECT 
+        number, 
+        fileName, 
+        created_at 
+      FROM 
+        UnassignedModels 
+      WHERE 
+        projectId = ?
+    `, [projectId]);
+
+    // Return the results
+    return res.status(200).json({
+      success: true,
+      data: results,
+      message: "Unassigned models retrieved successfully"
+    });
+
+  } catch (error) {
+    console.error("Error fetching unassigned models:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  } finally {
+    // Release the connection back to the pool if it exists
+    if (connection) {
+      try {
+        await connection.release();
+      } catch (releaseError) {
+        console.error("Error releasing connection:", releaseError);
+      }
+    }
+  }
+};
+
+const AssignModeltags = async (req, res) => {
+  let connection;
+  const tags = req.body;
+
+  if (!Array.isArray(tags) || tags.length === 0) {
+    return res.status(400).json({ error: "Request body must be a non-empty array of tags" });
+  }
+
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    for (const tag of tags) {
+      const { tagId, tagName, tagType, fileName, projectId } = tag;
+
+      if (!tagId || !tagName || !tagType || !projectId) {
+        throw new Error("Missing required fields in one of the tags");
+      }
+
+      const typeTrimmed = tagType.trim();
+
+      // Insert into Tags
+      await connection.query(
+        `INSERT INTO Tags (tagId, number, name, parenttag, type, filename, projectId)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          tagId,
+          tagName,
+          tagName,
+          null,
+          typeTrimmed,
+          fileName || null,
+          projectId,
+        ]
+      );
+
+      // Insert into TagInfo
+      await connection.query(
+        `INSERT INTO TagInfo (projectId, tagId, tag, type)
+         VALUES (?, ?, ?, ?)`,
+        [projectId, tagId, tagName, typeTrimmed]
+      );
+
+      // Insert into correct type-specific table
+      const typeLower = typeTrimmed.toLowerCase();
+      if (typeLower === "line") {
+        await connection.query(
+          `INSERT INTO LineList (projectId, tagId, tag)
+           VALUES (?, ?, ?)`,
+          [projectId, tagId, tagName]
+        );
+      } else if (typeLower === "equipment") {
+        await connection.query(
+          `INSERT INTO EquipmentList (projectId, tagId, tag)
+           VALUES (?, ?, ?)`,
+          [projectId, tagId, tagName]
+        );
+      } else if (typeLower === "valve") {
+        await connection.query(
+          `INSERT INTO ValveList (projectId, tagId, tag)
+           VALUES (?, ?, ?)`,
+          [projectId, tagId, tagName]
+        );
+      }
+
+      // ✅ Delete from UnassignedModels
+      await connection.query(
+        `DELETE FROM UnassignedModels WHERE number = ? AND projectId = ?`,
+        [tagName, projectId]
+      );
+    }
+
+    await connection.commit();
+    res.status(200).json({ message: "Tags added and unassigned entries removed successfully" });
+
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error("Error assigning tags:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+const DeleteAllUnassigned = async (req, res) => {
+  const projectId = req.params.id;
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.query(
+      "DELETE FROM UnassignedModels WHERE projectId = ?",
+      [projectId]
+    );
+    res.status(200).json({ message: "All unassigned models deleted for the project" });
+  } catch (error) {
+    console.error("Error deleting all unassigned models:", error);
+    res.status(500).json("Internal server error");
+  } finally {
+    connection.release();
+  }
+};
+const DeleteUnassigned = async (req, res) => {
+  const number = req.params.id;
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.query(
+      "DELETE FROM UnassignedModels WHERE number = ? ",
+      [number]
+    );
+    res.status(200).json({ message: "Unassigned model deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting unassigned model:", error);
+    res.status(500).json("Internal server error");
+  } finally {
+    connection.release();
+  }
+};
+
+
+module.exports = { uploadbulkModal,saveBulkModal,saveChangedUnassigned,GetUnassignedmodels,AssignModeltags,DeleteUnassigned,DeleteAllUnassigned};
