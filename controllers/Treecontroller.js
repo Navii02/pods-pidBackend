@@ -196,24 +196,62 @@ const updateSystem = async (req, res) => {
   let connection;
   try {
     connection = await pool.getConnection();
+    
+    // Start transaction
+    await connection.beginTransaction();
+
+    // Get the old values before updating
+    const [oldValues] = await connection.query(
+      `SELECT sys, name FROM Systable WHERE sysId = ?`,
+      [sysId]
+    );
+
+    if (oldValues.length === 0) {
+      return res.status(404).json({ success: false, message: "System not found" });
+    }
+
+    const oldSys = oldValues[0].sys;
+    const oldName = oldValues[0].name;
+
+    // Update the Systable
     const [result] = await connection.query(
       `UPDATE Systable 
        SET sys = ?, name = ?, project_id = ? 
        WHERE sysId = ?`,
       [sys, name, project_id, sysId]
     );
+
     if (result.affectedRows === 0) {
+      await connection.rollback();
       return res.status(404).json({ success: false, message: "System not found" });
     }
+
+    // Update all references in Tree table
+    await connection.query(
+      `UPDATE Tree 
+       SET sys = ?, name = ?
+       WHERE sys = ? AND project_id = ? AND tag IS NULL`,
+      [sys, name, oldSys, project_id]
+    );
+
+    // Update system references in Tree table where it's part of a path
+    await connection.query(
+      `UPDATE Tree 
+       SET sys = ?
+       WHERE sys = ? AND project_id = ?`,
+      [sys, oldSys, project_id]
+    );
+
+    await connection.commit();
     res.status(200).json({ success: true, message: "System updated successfully" });
   } catch (error) {
+    if (connection) await connection.rollback();
     console.error("Error updating system:", error.message);
     res.status(500).json({ success: false, message: "Internal server error" });
   } finally {
     if (connection) connection.release();
   }
 };
-
 // Delete a single System
 const deleteSystem = async (req, res) => {
   const sysId = req.params.id;
@@ -257,17 +295,56 @@ const updateDiscipline = async (req, res) => {
   let connection;
   try {
     connection = await pool.getConnection();
+    
+    // Start transaction
+    await connection.beginTransaction();
+
+    // Get the old values before updating
+    const [oldValues] = await connection.query(
+      `SELECT disc, name FROM Disctable WHERE discId = ?`,
+      [discId]
+    );
+
+    if (oldValues.length === 0) {
+      return res.status(404).json({ success: false, message: "Discipline not found" });
+    }
+
+    const oldDisc = oldValues[0].disc;
+    const oldName = oldValues[0].name;
+
+    // Update the Disctable
     const [result] = await connection.query(
       `UPDATE Disctable 
        SET disc = ?, name = ?, project_id = ? 
        WHERE discId = ?`,
       [disc, name, project_id, discId]
     );
+
     if (result.affectedRows === 0) {
+      await connection.rollback();
       return res.status(404).json({ success: false, message: "Discipline not found" });
     }
+
+    // Update all references in Tree table
+    await connection.query(
+      `UPDATE Tree 
+       SET disc = ?, name = ?
+       WHERE disc = ? AND project_id = ? AND sys IS NULL AND tag IS NULL`,
+      [disc, name, oldDisc, project_id]
+    );
+
+    // Update discipline references in Tree table where it's part of a path
+    await connection.query(
+      `UPDATE Tree 
+       SET disc = ?
+       WHERE disc = ? AND project_id = ?`,
+      [disc, oldDisc, project_id]
+    );
+
+    await connection.commit();
     res.status(200).json({ success: true, message: "Discipline updated successfully" });
   } catch (error) {
+    if (connection) await connection.rollback();
     console.error("Error updating discipline:", error.message);
     res.status(500).json({ success: false, message: "Internal server error" });
   } finally {
@@ -315,28 +392,52 @@ const deleteAllDisciplines = async (req, res) => {
 // Update a single Area
 const updateArea = async (req, res) => {
   const { AreaId, area, name, project_id } = req.body;
-  console.log( req.body);
-  
   let connection;
   try {
     connection = await pool.getConnection();
-    const [result] = await connection.query(
-      `UPDATE Areatable 
-       SET area = ?, name = ?, project_id = ? 
-       WHERE areaId = ?`,
-      [area, name, project_id, AreaId]
+    await connection.beginTransaction();
+
+    const [oldValues] = await connection.query(
+      `SELECT area, name FROM Areatable WHERE areaId = ?`,
+      [AreaId]
     );
-    if (result.affectedRows === 0) {
+
+    if (oldValues.length === 0) {
       return res.status(404).json({ success: false, message: "Area not found" });
     }
+
+    const oldArea = oldValues[0].area;
+
+    await connection.query(
+      `UPDATE Areatable SET area = ?, name = ?, project_id = ? WHERE areaId = ?`,
+      [area, name, project_id, AreaId]
+    );
+
+    await connection.query(
+      `UPDATE Tree 
+       SET area = ?, name = ?
+       WHERE area = ? AND project_id = ? AND disc IS NULL AND sys IS NULL AND tag IS NULL`,
+      [area, name, oldArea, project_id]
+    );
+
+    await connection.query(
+      `UPDATE Tree 
+       SET area = ?
+       WHERE area = ? AND project_id = ?`,
+      [area, oldArea, project_id]
+    );
+
+    await connection.commit();
     res.status(200).json({ success: true, message: "Area updated successfully" });
   } catch (error) {
+    if (connection) await connection.rollback();
     console.error("Error updating area:", error.message);
     res.status(500).json({ success: false, message: "Internal server error" });
   } finally {
     if (connection) connection.release();
   }
 };
+
 
 // Delete a single Area
 const deleteArea = async (req, res) => {

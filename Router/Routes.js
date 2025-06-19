@@ -78,6 +78,12 @@ const {
   addComment,
   deletecomment,
   deleteComment,
+  saveComment,
+  getCommentStatus,
+  getAllComments,
+  updateComment,
+  deleteCommentStatus,
+  deleteAllComment,
 } = require("../controllers/CommentController");
 const router = express.Router();
 
@@ -174,8 +180,18 @@ router.post('/assign-model-tags',AssignModeltags)
 
 //comments
 
-router.get("/comment/get-comments/:id", getComments);
+router.get("/comment/get-comments/:id", getCommentStatus);
 router.post("/comment/add-comment", addComment);
-router.delete("/comment/delete-comment/:id", deleteComment);
+router.delete("/comment/delete-comment/:id", deleteCommentStatus);
+
+router.get('/getcomments/:id',getCommentStatus)
+router.post('/savecomment',saveComment)
+router.get('/get-allcomments/:id',getAllComments)
+router.get('/get-comments/:id',getComments)
+router.put('/update-comment',updateComment)
+router.delete('/delete-comment/:id',deleteComment)
+router.delete('/delete=all-comments/:id',deleteAllComment)
+
+
 
 module.exports = router;

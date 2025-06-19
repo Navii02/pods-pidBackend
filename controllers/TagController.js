@@ -158,25 +158,39 @@ const updateTag = async (req, res) => {
     }
 
     connection = await pool.getConnection();
+    await connection.beginTransaction(); // Start transaction
 
+    // Get the current tag values before updating
     const [existingTag] = await connection.query(
       "SELECT * FROM Tags WHERE tagId = ?",
       [tagId]
     );
 
     if (existingTag.length === 0) {
+      await connection.rollback();
       return res.status(404).json({
         success: false,
         message: "Tag not found",
       });
     }
 
+    // Update the Tags table
     await connection.query(
       `UPDATE Tags 
        SET number = ?, name = ?, type = ?, parentTag = ?, filename = ?
        WHERE tagId = ?`,
       [number, name, type, parentTag, filename || null, tagId]
     );
+
+    // Update the Tree table - both tag (number) and name
+    await connection.query(
+      `UPDATE Tree 
+       SET tag = ?, name = ?
+       WHERE tag = ?`,
+      [number, name, existingTag[0].number]  // Update rows that had the old number
+    );
+
+    await connection.commit(); // Commit the transaction
 
     const [updatedTag] = await connection.query(
       "SELECT * FROM Tags WHERE tagId = ?",
@@ -189,6 +203,7 @@ const updateTag = async (req, res) => {
       data: updatedTag[0],
     });
   } catch (error) {
+    await connection.rollback();
     console.error("Error updating tag:", error);
     res.status(500).json({
       success: false,

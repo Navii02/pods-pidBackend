@@ -88,16 +88,16 @@ const createTables = async () => {
     )`);
 
     await connection.query(`
-      CREATE TABLE IF NOT EXISTS Tags (
-        tagId VARCHAR(255) PRIMARY KEY ,
-        number VARCHAR(767) NOT NULL, 
+    CREATE TABLE IF NOT EXISTS Tags (
+        tagId VARCHAR(255) PRIMARY KEY,
+        number VARCHAR(767) NOT NULL UNIQUE, 
         projectId VARCHAR(36),
         name TEXT NOT NULL,
         parenttag TEXT,
         type TEXT NOT NULL,
         filename TEXT
-      ) ENGINE=InnoDB;
-    `);
+    ) ENGINE=InnoDB;
+`);
 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS TagInfo (
@@ -225,7 +225,7 @@ const createTables = async () => {
             FOREIGN KEY (tagId) REFERENCES Tags(tagId) ON DELETE CASCADE
       ) ENGINE=InnoDB;
     `);
-      await connection.query(`
+    await connection.query(`
     CREATE TABLE IF NOT EXISTS valveList (
     
       area VARCHAR(100) DEFAULT NULL,
@@ -274,11 +274,10 @@ const createTables = async () => {
     flagText VARCHAR(50) NOT NULL,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 )`);
-
     await connection.query(`
   CREATE TABLE IF NOT EXISTS Areatable (
     areaId VARCHAR(100) NOT NULL PRIMARY KEY,
-    area VARCHAR(100) UNIQUE,
+    area VARCHAR(100) UNIQUE, 
     name VARCHAR(100) UNIQUE,
     project_id VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -288,7 +287,7 @@ const createTables = async () => {
     await connection.query(`
   CREATE TABLE IF NOT EXISTS Disctable (
     discId VARCHAR(100) NOT NULL PRIMARY KEY,
-    disc VARCHAR(100),
+    disc VARCHAR(100) UNIQUE,  
     name VARCHAR(100),
     project_id VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -298,26 +297,30 @@ const createTables = async () => {
     await connection.query(`
   CREATE TABLE IF NOT EXISTS Systable (
     sysId VARCHAR(100) NOT NULL PRIMARY KEY,
-    sys VARCHAR(100),
+    sys VARCHAR(100) UNIQUE, 
     name VARCHAR(100),
     project_id VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB;
 `);
-await connection.query(`
-  CREATE TABLE IF NOT EXISTS Tree (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-    area VARCHAR(100),
-    disc VARCHAR(100) DEFAULT NULL,
-    sys VARCHAR(100) DEFAULT NULL,
-    tag VARCHAR(100) DEFAULT NULL,
-    name VARCHAR(100),
-    project_id VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-   
-  ) ENGINE=InnoDB;
+
+    await connection.query(`
+    CREATE TABLE IF NOT EXISTS Tree (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        area VARCHAR(100), 
+        disc VARCHAR(100) DEFAULT NULL,  
+        sys VARCHAR(100) DEFAULT NULL,  
+        tag VARCHAR(767) DEFAULT NULL, 
+        name VARCHAR(100),
+        project_id VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (area) REFERENCES Areatable(area) ON DELETE CASCADE ON UPDATE CASCADE,
+        FOREIGN KEY (disc) REFERENCES Disctable(disc) ON DELETE CASCADE ON UPDATE CASCADE,
+        FOREIGN KEY (sys) REFERENCES Systable(sys) ON DELETE CASCADE ON UPDATE CASCADE,
+        FOREIGN KEY (tag) REFERENCES Tags(number) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB;
 `);
-await connection.query(`
+    await connection.query(`
   CREATE TABLE IF NOT EXISTS UnassignedModels (
     number VARCHAR(36) PRIMARY KEY,
     projectId VARCHAR(100) NOT NULL,
@@ -326,7 +329,7 @@ await connection.query(`
   ) ENGINE=InnoDB;
 `);
 
-await connection.query(`
+    await connection.query(`
   CREATE TABLE IF NOT EXISTS CommentTable (
     fileid VARCHAR(100),
     docNumber VARCHAR(100),
@@ -349,7 +352,7 @@ await connection.query(`
   ) ENGINE=InnoDB;
 `);
 
-await connection.query(`
+    await connection.query(`
   CREATE TABLE IF NOT EXISTS CommentStatus (
     number VARCHAR(36) PRIMARY KEY,
     projectId VARCHAR(100) NOT NULL,
@@ -359,7 +362,6 @@ await connection.query(`
     INDEX (projectId)
   ) ENGINE=InnoDB;
 `);
-
 
     console.log(`All tables ensured.`);
   } catch (error) {
