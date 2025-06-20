@@ -378,6 +378,16 @@ const AssignModeltags = async (req, res) => {
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
+    // Create tags folder if it doesn't exist
+    const tagsDir = path.join(__dirname, "..", "tags");
+    try {
+      await fs.mkdir(tagsDir, { recursive: true });
+    } catch (err) {
+      if (err.code !== 'EEXIST') {
+        throw err;
+      }
+    }
+
     for (const tag of tags) {
       const { tagId, tagName, tagType, fileName, projectId } = tag;
 
@@ -386,6 +396,20 @@ const AssignModeltags = async (req, res) => {
       }
 
       const typeTrimmed = tagType.trim();
+
+      // Move file from unassignedModels to tags folder
+      if (fileName) {
+        const sourcePath = path.join(__dirname, "..", "unassignedModels", fileName);
+        const destPath = path.join(tagsDir, fileName);
+        
+        try {
+          await fs.rename(sourcePath, destPath);
+          console.log(`Moved file from ${sourcePath} to ${destPath}`);
+        } catch (err) {
+          console.error(`Error moving file ${fileName}:`, err);
+          // Don't fail the whole operation if file move fails
+        }
+      }
 
       // Insert into Tags
       await connection.query(
@@ -431,24 +455,26 @@ const AssignModeltags = async (req, res) => {
         );
       }
 
-      // ✅ Delete from UnassignedModels
+      // Delete from UnassignedModels
       await connection.query(
         `DELETE FROM UnassignedModels WHERE number = ? AND projectId = ?`,
-        [tagName, projectId]
+        [tagId, projectId]
       );
     }
 
     await connection.commit();
-    res.status(200).json({ message: "Tags added and unassigned entries removed successfully" });
+    res.status(200).json({ message: "Tags added and files moved successfully" });
 
   } catch (error) {
     if (connection) await connection.rollback();
     console.error("Error assigning tags:", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", details: error.message });
   } finally {
     if (connection) connection.release();
   }
 };
+
+
 const DeleteAllUnassigned = async (req, res) => {
   const projectId = req.params.id;
   let connection;

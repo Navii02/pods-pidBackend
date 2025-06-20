@@ -17,7 +17,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/api', router);
 app.use('/upload', express.static(path.join(__dirname, 'documents')));
 app.use('/models', express.static(path.join(__dirname, 'models')));
-
+app.use('/tags', express.static(path.join(__dirname, 'tags')));
 
 const PORT = process.env.PORT || 5000;
 
