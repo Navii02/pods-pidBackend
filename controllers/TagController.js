@@ -1,6 +1,9 @@
 const { pool } = require("../config/db");
 const { v4: uuidv4 } = require("uuid");
 
+const fs = require('fs').promises;
+const path = require('path');
+
 const generateCustomID = (prefix) => {
   const uuid = uuidv4();
   const uniqueID = prefix + uuid.replace(/-/g, "").slice(0, 6);
@@ -139,6 +142,88 @@ const deleteTag = async (req, res) => {
   } finally {
     if (connection) connection.release();
   }
+};
+
+const getTagByProjectAndFilename = async (req, res) => {
+  const { projectId, filename } = req.params;
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+
+    // Get tag details from database
+    const [result] = await connection.query(
+      "SELECT * FROM Tags WHERE projectId = ? AND filename = ?",
+      [projectId, filename]
+    );
+
+    if (result.length > 0) {
+      const tagDetails = result[0];
+      
+      // Get file metadata from unassignedModels folder
+      let fileMetadata = null;
+      try {
+        const filePath = path.join(__dirname, '../unassignedModels', filename);
+        console.log("🔍 Looking for file at path:", filePath);
+        
+        const stats = await fs.stat(filePath);
+        
+        fileMetadata = {
+          exists: true,
+          fileName: filename,
+          fileSize: stats.size,
+          fileSizeFormatted: formatFileSize(stats.size),
+          createdDate: stats.birthtime,
+          modifiedDate: stats.mtime,
+          accessedDate: stats.atime,
+          isFile: stats.isFile(),
+          isDirectory: stats.isDirectory(),
+          filePath: filePath
+        };
+        
+        console.log("File metadata retrieved:", fileMetadata);
+        
+      } catch (fileError) {
+        console.error("Error accessing file:", fileError.message);
+        fileMetadata = {
+          exists: false,
+          fileName: filename,
+          error: fileError.message,
+          filePath: path.join(__dirname, '../unassignedModels', filename)
+        };
+      }
+
+      // Combine tag details with file metadata
+      const response = {
+        ...tagDetails,
+        fileMetadata: fileMetadata
+      };
+
+      res.status(200).json(response);
+    } else {
+      res.status(404).json({ 
+        message: "Tag not found for the given projectId and filename",
+        requestedFile: filename,
+        projectId: projectId
+      });
+    }
+  } catch (error) {
+    console.error("❌ Error fetching tag:", error);
+    res.status(500).json({ message: "Internal server error" });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+// Helper function to format file size in  readable format
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
 const updateTag = async (req, res) => {
@@ -379,7 +464,30 @@ const GetLineList = async (req, res) => {
     connection.release();
   }
 };
+const GetLineListUsingTagId=async(req,res)=>{
+    const {id,tagId} = req.params;
+  let connection;
 
+  try {
+    connection = await pool.getConnection();
+
+    const [result] = await connection.query(
+      "SELECT * FROM LineList WHERE projectId = ? AND tagId = ?",
+      [id, tagId]
+    );
+    console.log(result)
+    if (result.length > 0) {
+      res.status(200).json(result[0]); 
+    } else {
+      res.status(404).json({ message: "line list not found for the given projectId and tagid" });
+    }
+  } catch (error) {
+    console.error("Error fetching line list:", error);
+    res.status(500).json({ message: "Internal server error" });
+  } finally {
+    if (connection) connection.release();
+  }
+}
 const EditLineList = async (req, res) => {
   let connection;
   try {
@@ -545,6 +653,30 @@ const GetequipmentList = async (req, res) => {
     connection.release();
   }
 };
+const GetEquipmentListUsingTagId=async(req,res)=>{
+    const {id,tagId} = req.params;
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+
+    const [result] = await connection.query(
+      "SELECT * FROM EquipmentList WHERE projectId = ? AND tagId = ?",
+      [id, tagId]
+    );
+    console.log(result)
+    if (result.length > 0) {
+      res.status(200).json(result[0]); 
+    } else {
+      res.status(404).json({ message: "EquipmentList  not found for the given projectId and tagid" });
+    }
+  } catch (error) {
+    console.error("Error fetching EquipmentList:", error);
+    res.status(500).json({ message: "Internal server error" });
+  } finally {
+    if (connection) connection.release();
+  }
+}
 const EditEquipmentList = async (req, res) => {
   let connection;
   try {
@@ -678,7 +810,29 @@ const GetValveList = async (req, res) => {
     connection.release();
   }
 };
+const GetValveListUsingTagId=async(req,res)=>{
+    const {id,tagId} = req.params;
+  let connection;
 
+  try {
+    connection = await pool.getConnection();
+
+    const [result] = await connection.query(
+      "SELECT * FROM valveList WHERE projectId = ? AND tagId = ?",
+      [id, tagId]
+    );
+    if (result.length > 0) {
+      res.status(200).json(result[0]); 
+    } else {
+      res.status(404).json({ message: "valveList not found for the given projectId and tagid" });
+    }
+  } catch (error) {
+    console.error("Error fetching valveList:", error);
+    res.status(500).json({ message: "Internal server error" });
+  } finally {
+    if (connection) connection.release();
+  }
+}
 const EditValveList = async (req, res) => {
   let connection;
   try {
@@ -808,6 +962,32 @@ const EditValveList = async (req, res) => {
   }
 };
 
+// General TagInfo
+const GetGeneralTagInfUsingTagId=async(req,res)=>{
+    const {id,tagId} = req.params;
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+
+    const [result] = await connection.query(
+      "SELECT * FROM TagInfo WHERE projectId = ? AND tagId = ?",
+      [tagId,id]
+    );
+    if (result.length > 0) {
+      console.log(result[0])
+      res.status(200).json(result[0]); 
+    } else {
+      res.status(404).json({ message: "TagInfo not found for the given projectId and tagid" });
+    }
+  } catch (error) {
+    console.error("Error fetching TagInfo:", error);
+    res.status(500).json({ message: "Internal server error" });
+  } finally {
+    if (connection) connection.release();
+  }
+}
+
 
 module.exports = {
   AddTag,
@@ -823,5 +1003,9 @@ module.exports = {
   EditLineList,
   EditEquipmentList,
   EditValveList,
-  
+  getTagByProjectAndFilename,
+  GetLineListUsingTagId,
+  GetEquipmentListUsingTagId,
+  GetValveListUsingTagId,
+  GetGeneralTagInfUsingTagId
 };

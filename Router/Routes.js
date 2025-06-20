@@ -35,6 +35,11 @@ const {
   EditEquipmentList,
   EditValveList,
   DeleteValveList,
+  getTagByProjectAndFilename,
+  GetLineListUsingTagId,
+  GetEquipmentListUsingTagId,
+  GetValveListUsingTagId,
+  GetGeneralTagInfUsingTagId,
 } = require("../controllers/TagController");
 const {
   AddArea,
@@ -105,18 +110,25 @@ router.post("/addtag", AddTag);
 router.get("/get-alltags/:id", getTags);
 router.delete("/delete-tag/:id", deleteTag);
 router.put("/update-tag/:id", updateTag);
+router.get(
+  "/get-mesh-tag-by-project/:projectId/:filename",
+  getTagByProjectAndFilename
+);
 
 router.get("/getline/:id", GetLineList);
 router.put("/edit-line-list", EditLineList);
 router.delete("/delete-line-list/:id", deleteTag);
+router.get("/getline-details/:id/:tagId", GetLineListUsingTagId);
 
 router.get("/getequipment/:id", GetequipmentList);
 router.put("/edit-equipment-list", EditEquipmentList);
 router.delete("/delete-equipment-list/:id", deleteTag);
+router.get("/getequipment-details/:id/:tagId", GetEquipmentListUsingTagId);
 
 router.get("/getvalve/:id", GetValveList);
 router.put("/edit-valve-list", EditValveList);
 router.delete("/delete-valve-list/:id", deleteTag);
+router.get("/getvalve-details/:id/:tagId", GetValveListUsingTagId);
 
 router.post("/assign-tag", AssignTag);
 router.get("/get-assigned-tags/:id", getAssignedTags);
@@ -171,12 +183,10 @@ router.post(
 );
 router.post("/save-bulkimport", saveBulkModal);
 router.post("/save-changedfiles", saveChangedUnassigned);
-router.get('/get-unassignedmodels/:id',GetUnassignedmodels)
-router.post('/assign-model-tags',AssignModeltags)
- router.delete('/delete-allunassignedmodel/:id',DeleteAllUnassigned)
-  router.delete('/delete-unassignedmodel/:id',DeleteUnassigned)
-
-
+router.get("/get-unassignedmodels/:id", GetUnassignedmodels);
+router.post("/assign-model-tags", AssignModeltags);
+router.delete("/delete-allunassignedmodel/:id", DeleteAllUnassigned);
+router.delete("/delete-unassignedmodel/:id", DeleteUnassigned);
 
 //comments
 
@@ -184,14 +194,15 @@ router.get("/comment/get-comments/:id", getCommentStatus);
 router.post("/comment/add-comment", addComment);
 router.delete("/comment/delete-comment/:id", deleteCommentStatus);
 
-router.get('/getcomments/:id',getCommentStatus)
-router.post('/savecomment',saveComment)
-router.get('/get-allcomments/:id',getAllComments)
-router.get('/get-comments/:id',getComments)
-router.put('/update-comment',updateComment)
-router.delete('/delete-comment/:id',deleteComment)
-router.delete('/delete=all-comments/:id',deleteAllComment)
+router.get("/getcomments/:id", getCommentStatus);
+router.post("/savecomment", saveComment);
+router.get("/get-allcomments/:id", getAllComments);
+router.get("/get-comments/:id", getComments);
+router.put("/update-comment", updateComment);
+router.delete("/delete-comment/:id", deleteComment);
+router.delete("/delete=all-comments/:id", deleteAllComment);
 
-
+// General tag inf
+router.get("/getgeneral-taginfo-details/:id/:tagId",GetGeneralTagInfUsingTagId);
 
 module.exports = router;
