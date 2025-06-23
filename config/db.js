@@ -160,6 +160,16 @@ const createTables = async () => {
     `);
 
     await connection.query(`
+    CREATE TABLE IF NOT EXISTS UserTagInfoFieldUnits (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        projectId VARCHAR(36),
+        field TEXT NOT NULL,
+        unit TEXT NOT NULL,
+        statuscheck TEXT NOT NULL
+    ) ENGINE=InnoDB;
+`);
+
+    await connection.query(`
       CREATE TABLE IF NOT EXISTS LineList (
        projectId VARCHAR(36),
         tagId VARCHAR(255),

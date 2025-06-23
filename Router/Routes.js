@@ -39,7 +39,9 @@ const {
   GetLineListUsingTagId,
   GetEquipmentListUsingTagId,
   GetValveListUsingTagId,
-  GetGeneralTagInfUsingTagId,
+  GetGeneralTagInfoUsingTagId,
+  GetGeneralTagInfoField,
+  GetAllGeneralTagInfo,
 } = require("../controllers/TagController");
 const {
   AddArea,
@@ -204,22 +206,9 @@ router.delete('/delete-comment/:id',deleteComment)
 router.delete('/delete=all-comments/:id',deleteAllComment)
 
 
-//iroamer
-
-router.get('/getmodel/:projectId/:ids',GetModal)
-
-
-
-
-
-
-
-
-
-
-
-router.get("/getgeneral-taginfo-details/:id/:tagId",GetGeneralTagInfUsingTagId);
-
-
+// General tag inf
+router.get("/getgeneral-taginfo-details/:id/:tagId",GetGeneralTagInfoUsingTagId);
+router.get("/get-allgeneral-taginfo/:id/",GetAllGeneralTagInfo);
+router.get("/getgeneral-taginfo-field/:id/",GetGeneralTagInfoField);
 
 module.exports = router;

@@ -54,6 +54,13 @@ const CreateProject = async (req, res) => {
       { statusname: "closed", color: "#00ff00" },
     ];
 
+    // Insert unit and field for general taginfo
+      const userDefinedFields = Array.from({ length: 50 }, (_, i) => ({
+        taginfo: `Taginfo${i + 1}`,
+        taginfounit: `Taginfounit${i + 1}`,
+        tagcheck: "checked",
+      }));
+
     for (const status of defaultStatuses) {
       const statusId = generateCustomID("CST");
       await connection.query(
@@ -61,6 +68,13 @@ const CreateProject = async (req, res) => {
         [statusId, projectId, status.statusname, status.color]
       );
     }
+
+    for (let { taginfo, taginfounit, tagcheck } of userDefinedFields) {
+  await connection.query(
+    `INSERT IGNORE INTO UserTagInfoFieldUnits (projectId, field, unit, statuscheck) VALUES (?, ?, ?, ?)`,
+    [projectId, taginfo, taginfounit, tagcheck]
+  );
+}
 
     // Fetch and return the newly created project
     const [projectRows] = await connection.query(

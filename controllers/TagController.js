@@ -963,7 +963,8 @@ const EditValveList = async (req, res) => {
 };
 
 // General TagInfo
-const GetGeneralTagInfUsingTagId=async(req,res)=>{
+// get all general taginfo using tagId
+const GetGeneralTagInfoUsingTagId=async(req,res)=>{
     const {id,tagId} = req.params;
   let connection;
 
@@ -987,8 +988,60 @@ const GetGeneralTagInfUsingTagId=async(req,res)=>{
     if (connection) connection.release();
   }
 }
+// get all general taginfo fields
+const GetGeneralTagInfoField=async(req,res)=>{
+    const {id} = req.params;
+  let connection;
 
+  try {
+    connection = await pool.getConnection();
 
+    const [result] = await connection.query(
+      "SELECT * FROM UserTagInfoFieldUnits WHERE projectId = ?",
+      [id]
+    );
+    if (result.length > 0) {
+      res.status(200).json(result); 
+    } else {
+      res.status(404).json({ message: "UserTagInfoFieldUnits not found for the given projectId and tagid" });
+    }
+  } catch (error) {
+    console.error("Error fetching UserTagInfoFieldUnits:", error);
+    res.status(500).json({ message: "Internal server error" });
+  } finally {
+    if (connection) connection.release();
+  }
+}
+// get all general taginfo 
+const GetAllGeneralTagInfo=async(req,res)=>{
+    const {id} = req.params;
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+
+    const [result] = await connection.query(
+      "SELECT * FROM TagInfo WHERE projectId = ?",
+      [id]
+    );
+    if (result.length > 0) {
+      console.log(result)
+      res.status(200).json(result); 
+    } else {
+      res.status(404).json({ message: "TagInfo not found for the given projectId and tagid" });
+    }
+  } catch (error) {
+    console.error("Error fetching TagInfo:", error);
+    res.status(500).json({ message: "Internal server error" });
+  } finally {
+    if (connection) connection.release();
+  }
+}
+// update general taginfo fields
+const UpdateGEneralTagInfField=async(req,res)=>{
+ const { id: projectId, fieldId } = req.params;
+  const { field, unit, statuscheck } = req.body;
+}
 module.exports = {
   AddTag,
   getTags,
@@ -1007,5 +1060,8 @@ module.exports = {
   GetLineListUsingTagId,
   GetEquipmentListUsingTagId,
   GetValveListUsingTagId,
-  GetGeneralTagInfUsingTagId
+  GetGeneralTagInfoUsingTagId,
+  GetGeneralTagInfoField,
+  GetAllGeneralTagInfo,
+  UpdateGEneralTagInfField
 };
