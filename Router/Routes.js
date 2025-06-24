@@ -209,19 +209,16 @@ router.delete('/delete-comment/:id',deleteComment)
 router.delete('/delete=all-comments/:id',deleteAllComment)
 
 
-//iroamer
 
-router.get('/getmodel/:projectId/:ids',GetModal)
-
-
-
-
-
-
-
-//iroamer
 
 router.get('/getmodel/:projectId/:areaIds/:discIds/:systemIds/:tagIds',GetModal)
+
+
+
+
+
+
+
 
 
 
