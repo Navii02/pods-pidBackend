@@ -42,6 +42,9 @@ const {
   GetGeneralTagInfoUsingTagId,
   GetGeneralTagInfoField,
   GetAllGeneralTagInfo,
+  UpdateGEneralTagInfField,
+  EditGeneralTagInfo,
+  ClearTagInfoFields,
 } = require("../controllers/TagController");
 const {
   AddArea,
@@ -206,9 +209,13 @@ router.delete('/delete-comment/:id',deleteComment)
 router.delete('/delete=all-comments/:id',deleteAllComment)
 
 
-// General tag inf
+// General tag info 
 router.get("/getgeneral-taginfo-details/:id/:tagId",GetGeneralTagInfoUsingTagId);
-router.get("/get-allgeneral-taginfo/:id/",GetAllGeneralTagInfo);
-router.get("/getgeneral-taginfo-field/:id/",GetGeneralTagInfoField);
+router.get("/get-allgeneral-taginfo/:id",GetAllGeneralTagInfo);
+router.get("/getgeneral-taginfo-field/:id",GetGeneralTagInfoField);
+router.put("/update-general-taginfo-field",UpdateGEneralTagInfField);
+router.put("/edit-general-taginfo-list",EditGeneralTagInfo);
+router.put("/delete-general-taginfo-list",ClearTagInfoFields);
+
 
 module.exports = router;

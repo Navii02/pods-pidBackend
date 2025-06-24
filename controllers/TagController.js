@@ -1,8 +1,8 @@
 const { pool } = require("../config/db");
 const { v4: uuidv4 } = require("uuid");
 
-const fs = require('fs').promises;
-const path = require('path');
+const fs = require("fs").promises;
+const path = require("path");
 
 const generateCustomID = (prefix) => {
   const uuid = uuidv4();
@@ -159,15 +159,15 @@ const getTagByProjectAndFilename = async (req, res) => {
 
     if (result.length > 0) {
       const tagDetails = result[0];
-      
+
       // Get file metadata from unassignedModels folder
       let fileMetadata = null;
       try {
-        const filePath = path.join(__dirname, '../unassignedModels', filename);
+        const filePath = path.join(__dirname, "../unassignedModels", filename);
         console.log("🔍 Looking for file at path:", filePath);
-        
+
         const stats = await fs.stat(filePath);
-        
+
         fileMetadata = {
           exists: true,
           fileName: filename,
@@ -178,33 +178,32 @@ const getTagByProjectAndFilename = async (req, res) => {
           accessedDate: stats.atime,
           isFile: stats.isFile(),
           isDirectory: stats.isDirectory(),
-          filePath: filePath
+          filePath: filePath,
         };
-        
+
         console.log("File metadata retrieved:", fileMetadata);
-        
       } catch (fileError) {
         console.error("Error accessing file:", fileError.message);
         fileMetadata = {
           exists: false,
           fileName: filename,
           error: fileError.message,
-          filePath: path.join(__dirname, '../unassignedModels', filename)
+          filePath: path.join(__dirname, "../unassignedModels", filename),
         };
       }
 
       // Combine tag details with file metadata
       const response = {
         ...tagDetails,
-        fileMetadata: fileMetadata
+        fileMetadata: fileMetadata,
       };
 
       res.status(200).json(response);
     } else {
-      res.status(404).json({ 
+      res.status(404).json({
         message: "Tag not found for the given projectId and filename",
         requestedFile: filename,
-        projectId: projectId
+        projectId: projectId,
       });
     }
   } catch (error) {
@@ -217,13 +216,13 @@ const getTagByProjectAndFilename = async (req, res) => {
 
 // Helper function to format file size in  readable format
 const formatFileSize = (bytes) => {
-  if (bytes === 0) return '0 Bytes';
-  
+  if (bytes === 0) return "0 Bytes";
+
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
 const updateTag = async (req, res) => {
@@ -272,7 +271,7 @@ const updateTag = async (req, res) => {
       `UPDATE Tree 
        SET tag = ?, name = ?
        WHERE tag = ?`,
-      [number, name, existingTag[0].number]  // Update rows that had the old number
+      [number, name, existingTag[0].number] // Update rows that had the old number
     );
 
     await connection.commit(); // Commit the transaction
@@ -464,8 +463,8 @@ const GetLineList = async (req, res) => {
     connection.release();
   }
 };
-const GetLineListUsingTagId=async(req,res)=>{
-    const {id,tagId} = req.params;
+const GetLineListUsingTagId = async (req, res) => {
+  const { id, tagId } = req.params;
   let connection;
 
   try {
@@ -475,11 +474,15 @@ const GetLineListUsingTagId=async(req,res)=>{
       "SELECT * FROM LineList WHERE projectId = ? AND tagId = ?",
       [id, tagId]
     );
-    console.log(result)
+    console.log(result);
     if (result.length > 0) {
-      res.status(200).json(result[0]); 
+      res.status(200).json(result[0]);
     } else {
-      res.status(404).json({ message: "line list not found for the given projectId and tagid" });
+      res
+        .status(404)
+        .json({
+          message: "line list not found for the given projectId and tagid",
+        });
     }
   } catch (error) {
     console.error("Error fetching line list:", error);
@@ -487,7 +490,7 @@ const GetLineListUsingTagId=async(req,res)=>{
   } finally {
     if (connection) connection.release();
   }
-}
+};
 const EditLineList = async (req, res) => {
   let connection;
   try {
@@ -653,8 +656,8 @@ const GetequipmentList = async (req, res) => {
     connection.release();
   }
 };
-const GetEquipmentListUsingTagId=async(req,res)=>{
-    const {id,tagId} = req.params;
+const GetEquipmentListUsingTagId = async (req, res) => {
+  const { id, tagId } = req.params;
   let connection;
 
   try {
@@ -664,11 +667,15 @@ const GetEquipmentListUsingTagId=async(req,res)=>{
       "SELECT * FROM EquipmentList WHERE projectId = ? AND tagId = ?",
       [id, tagId]
     );
-    console.log(result)
+    console.log(result);
     if (result.length > 0) {
-      res.status(200).json(result[0]); 
+      res.status(200).json(result[0]);
     } else {
-      res.status(404).json({ message: "EquipmentList  not found for the given projectId and tagid" });
+      res
+        .status(404)
+        .json({
+          message: "EquipmentList  not found for the given projectId and tagid",
+        });
     }
   } catch (error) {
     console.error("Error fetching EquipmentList:", error);
@@ -676,7 +683,7 @@ const GetEquipmentListUsingTagId=async(req,res)=>{
   } finally {
     if (connection) connection.release();
   }
-}
+};
 const EditEquipmentList = async (req, res) => {
   let connection;
   try {
@@ -810,8 +817,8 @@ const GetValveList = async (req, res) => {
     connection.release();
   }
 };
-const GetValveListUsingTagId=async(req,res)=>{
-    const {id,tagId} = req.params;
+const GetValveListUsingTagId = async (req, res) => {
+  const { id, tagId } = req.params;
   let connection;
 
   try {
@@ -822,9 +829,13 @@ const GetValveListUsingTagId=async(req,res)=>{
       [id, tagId]
     );
     if (result.length > 0) {
-      res.status(200).json(result[0]); 
+      res.status(200).json(result[0]);
     } else {
-      res.status(404).json({ message: "valveList not found for the given projectId and tagid" });
+      res
+        .status(404)
+        .json({
+          message: "valveList not found for the given projectId and tagid",
+        });
     }
   } catch (error) {
     console.error("Error fetching valveList:", error);
@@ -832,7 +843,7 @@ const GetValveListUsingTagId=async(req,res)=>{
   } finally {
     if (connection) connection.release();
   }
-}
+};
 const EditValveList = async (req, res) => {
   let connection;
   try {
@@ -964,8 +975,8 @@ const EditValveList = async (req, res) => {
 
 // General TagInfo
 // get all general taginfo using tagId
-const GetGeneralTagInfoUsingTagId=async(req,res)=>{
-    const {id,tagId} = req.params;
+const GetGeneralTagInfoUsingTagId = async (req, res) => {
+  const { id, tagId } = req.params;
   let connection;
 
   try {
@@ -973,13 +984,17 @@ const GetGeneralTagInfoUsingTagId=async(req,res)=>{
 
     const [result] = await connection.query(
       "SELECT * FROM TagInfo WHERE projectId = ? AND tagId = ?",
-      [tagId,id]
+      [tagId, id]
     );
     if (result.length > 0) {
-      console.log(result[0])
-      res.status(200).json(result[0]); 
+      console.log(result[0]);
+      res.status(200).json(result[0]);
     } else {
-      res.status(404).json({ message: "TagInfo not found for the given projectId and tagid" });
+      res
+        .status(404)
+        .json({
+          message: "TagInfo not found for the given projectId and tagid",
+        });
     }
   } catch (error) {
     console.error("Error fetching TagInfo:", error);
@@ -987,10 +1002,10 @@ const GetGeneralTagInfoUsingTagId=async(req,res)=>{
   } finally {
     if (connection) connection.release();
   }
-}
+};
 // get all general taginfo fields
-const GetGeneralTagInfoField=async(req,res)=>{
-    const {id} = req.params;
+const GetGeneralTagInfoField = async (req, res) => {
+  const { id } = req.params;
   let connection;
 
   try {
@@ -1001,9 +1016,14 @@ const GetGeneralTagInfoField=async(req,res)=>{
       [id]
     );
     if (result.length > 0) {
-      res.status(200).json(result); 
+      res.status(200).json(result);
     } else {
-      res.status(404).json({ message: "UserTagInfoFieldUnits not found for the given projectId and tagid" });
+      res
+        .status(404)
+        .json({
+          message:
+            "UserTagInfoFieldUnits not found for the given projectId and tagid",
+        });
     }
   } catch (error) {
     console.error("Error fetching UserTagInfoFieldUnits:", error);
@@ -1011,10 +1031,10 @@ const GetGeneralTagInfoField=async(req,res)=>{
   } finally {
     if (connection) connection.release();
   }
-}
-// get all general taginfo 
-const GetAllGeneralTagInfo=async(req,res)=>{
-    const {id} = req.params;
+};
+// get all general taginfo
+const GetAllGeneralTagInfo = async (req, res) => {
+  const { id } = req.params;
   let connection;
 
   try {
@@ -1025,10 +1045,13 @@ const GetAllGeneralTagInfo=async(req,res)=>{
       [id]
     );
     if (result.length > 0) {
-      console.log(result)
-      res.status(200).json(result); 
+      res.status(200).json(result);
     } else {
-      res.status(404).json({ message: "TagInfo not found for the given projectId and tagid" });
+      res
+        .status(404)
+        .json({
+          message: "TagInfo not found for the given projectId and tagid",
+        });
     }
   } catch (error) {
     console.error("Error fetching TagInfo:", error);
@@ -1036,12 +1059,294 @@ const GetAllGeneralTagInfo=async(req,res)=>{
   } finally {
     if (connection) connection.release();
   }
-}
+};
 // update general taginfo fields
-const UpdateGEneralTagInfField=async(req,res)=>{
- const { id: projectId, fieldId } = req.params;
-  const { field, unit, statuscheck } = req.body;
-}
+const UpdateGEneralTagInfField = async (req, res) => {
+  const { id, projectId, field, unit, statuscheck } = req.body;
+  let connection;
+  console.log(req.body);
+  // Validate input
+  if (!id || !projectId || !field) {
+    return res.status(400).json({
+      success: false,
+      message: "Field ID, Project ID, and field name are required",
+    });
+  }
+
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    // Fetch the existing record before update
+    const [existingField] = await connection.query(
+      `SELECT * FROM UserTagInfoFieldUnits WHERE id = ? AND projectId = ?`,
+      [id, projectId]
+    );
+    console.log(existingField);
+
+    if (existingField.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        success: false,
+        message: "Field not found",
+      });
+    }
+
+    // Perform the update
+    await connection.query(
+      `UPDATE UserTagInfoFieldUnits 
+       SET field = ?, unit = ?, statuscheck = ?
+       WHERE id = ? AND projectId = ?`,
+      [field, unit, statuscheck, id, projectId]
+    );
+
+    await connection.commit();
+
+    const [updatedField] = await connection.query(
+      `SELECT * FROM UserTagInfoFieldUnits WHERE id = ? AND projectId = ?`,
+      [id, projectId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Field updated successfully",
+      data: updatedField[0],
+    });
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error("Error updating generalTaginfo field:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update field",
+      details: error.message,
+    });
+  } finally {
+    if (connection) {
+      try {
+        await connection.release();
+      } catch (releaseError) {
+        console.error("Error releasing connection:", releaseError);
+      }
+    }
+  }
+};
+// Update general tagInfo  edit-general-taginfo-list
+const EditGeneralTagInfo = async (req, res) => {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+    const {
+      projectId,
+      tagId,
+      tag,
+      type,
+      // TagInfo fields 1 to 50
+      taginfo1,
+      taginfo2,
+      taginfo3,
+      taginfo4,
+      taginfo5,
+      taginfo6,
+      taginfo7,
+      taginfo8,
+      taginfo9,
+      taginfo10,
+      taginfo11,
+      taginfo12,
+      taginfo13,
+      taginfo14,
+      taginfo15,
+      taginfo16,
+      taginfo17,
+      taginfo18,
+      taginfo19,
+      taginfo20,
+      taginfo21,
+      taginfo22,
+      taginfo23,
+      taginfo24,
+      taginfo25,
+      taginfo26,
+      taginfo27,
+      taginfo28,
+      taginfo29,
+      taginfo30,
+      taginfo31,
+      taginfo32,
+      taginfo33,
+      taginfo34,
+      taginfo35,
+      taginfo36,
+      taginfo37,
+      taginfo38,
+      taginfo39,
+      taginfo40,
+      taginfo41,
+      taginfo42,
+      taginfo43,
+      taginfo44,
+      taginfo45,
+      taginfo46,
+      taginfo47,
+      taginfo48,
+      taginfo49,
+      taginfo50,
+    } = req.body;
+
+    // Basic validation
+    if (!projectId || !tagId) {
+      return res
+        .status(400)
+        .json({ error: "projectId and tagId are required" });
+    }
+
+    connection = await pool.getConnection();
+
+    const updateQuery = `
+      UPDATE TagInfo SET 
+        tag = ?, type = ?,
+        taginfo1 = ?, taginfo2 = ?, taginfo3 = ?, taginfo4 = ?, taginfo5 = ?,
+        taginfo6 = ?, taginfo7 = ?, taginfo8 = ?, taginfo9 = ?, taginfo10 = ?,
+        taginfo11 = ?, taginfo12 = ?, taginfo13 = ?, taginfo14 = ?, taginfo15 = ?,
+        taginfo16 = ?, taginfo17 = ?, taginfo18 = ?, taginfo19 = ?, taginfo20 = ?,
+        taginfo21 = ?, taginfo22 = ?, taginfo23 = ?, taginfo24 = ?, taginfo25 = ?,
+        taginfo26 = ?, taginfo27 = ?, taginfo28 = ?, taginfo29 = ?, taginfo30 = ?,
+        taginfo31 = ?, taginfo32 = ?, taginfo33 = ?, taginfo34 = ?, taginfo35 = ?,
+        taginfo36 = ?, taginfo37 = ?, taginfo38 = ?, taginfo39 = ?, taginfo40 = ?,
+        taginfo41 = ?, taginfo42 = ?, taginfo43 = ?, taginfo44 = ?, taginfo45 = ?,
+        taginfo46 = ?, taginfo47 = ?, taginfo48 = ?, taginfo49 = ?, taginfo50 = ?
+      WHERE tagId = ? AND projectId = ?
+    `;
+
+    const values = [
+      tag || null,
+      type || null,
+      taginfo1 || null,
+      taginfo2 || null,
+      taginfo3 || null,
+      taginfo4 || null,
+      taginfo5 || null,
+      taginfo6 || null,
+      taginfo7 || null,
+      taginfo8 || null,
+      taginfo9 || null,
+      taginfo10 || null,
+      taginfo11 || null,
+      taginfo12 || null,
+      taginfo13 || null,
+      taginfo14 || null,
+      taginfo15 || null,
+      taginfo16 || null,
+      taginfo17 || null,
+      taginfo18 || null,
+      taginfo19 || null,
+      taginfo20 || null,
+      taginfo21 || null,
+      taginfo22 || null,
+      taginfo23 || null,
+      taginfo24 || null,
+      taginfo25 || null,
+      taginfo26 || null,
+      taginfo27 || null,
+      taginfo28 || null,
+      taginfo29 || null,
+      taginfo30 || null,
+      taginfo31 || null,
+      taginfo32 || null,
+      taginfo33 || null,
+      taginfo34 || null,
+      taginfo35 || null,
+      taginfo36 || null,
+      taginfo37 || null,
+      taginfo38 || null,
+      taginfo39 || null,
+      taginfo40 || null,
+      taginfo41 || null,
+      taginfo42 || null,
+      taginfo43 || null,
+      taginfo44 || null,
+      taginfo45 || null,
+      taginfo46 || null,
+      taginfo47 || null,
+      taginfo48 || null,
+      taginfo49 || null,
+      taginfo50 || null,
+      tagId,
+      projectId,
+    ];
+
+    const [result] = await connection.query(updateQuery, values);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        error: "No record found with the given tagId and projectId",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "TagInfo updated successfully",
+      affectedRows: result.affectedRows,
+    });
+  } catch (error) {
+    console.error("Error updating TagInfo:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message,
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+// delete generaltaginfo
+const ClearTagInfoFields = async (req, res) => {
+  const { tagId, projectId } = req.body;
+  let connection;
+  console.log(req.body);
+  if (!tagId || !projectId) {
+    return res.status(400).json({ error: "tagId and projectId are required" });
+  }
+
+  try {
+    connection = await pool.getConnection();
+
+    // Prepare the SET clause with taginfo1 to taginfo50 = NULL
+    const fieldsToClear = Array.from(
+      { length: 50 },
+      (_, i) => `taginfo${i + 1} = NULL`
+    ).join(", ");
+
+    const query = `
+      UPDATE TagInfo
+      SET ${fieldsToClear}
+      WHERE tagId = ? AND projectId = ?
+    `;
+
+    const [result] = await connection.query(query, [tagId, projectId]);
+    console.log(result);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "No matching record found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "TagInfo fields cleared successfully",
+      affectedRows: result,
+    });
+  } catch (error) {
+    console.error("Error clearing TagInfo fields:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message,
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
 module.exports = {
   AddTag,
   getTags,
@@ -1063,5 +1368,7 @@ module.exports = {
   GetGeneralTagInfoUsingTagId,
   GetGeneralTagInfoField,
   GetAllGeneralTagInfo,
-  UpdateGEneralTagInfField
+  UpdateGEneralTagInfField,
+  EditGeneralTagInfo,
+  ClearTagInfoFields,
 };

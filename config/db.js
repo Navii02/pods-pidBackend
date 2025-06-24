@@ -373,6 +373,35 @@ const createTables = async () => {
   ) ENGINE=InnoDB;
 `);
 
+await connection.query(`CREATE TABLE IF NOT EXISTS GroundSettings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  projectId VARCHAR(36) NOT NULL,
+  level DOUBLE,
+  color VARCHAR(50),
+  opacity DOUBLE,
+  FOREIGN KEY (projectId) REFERENCES projects(projectId)
+) ENGINE=InnoDB;`)
+
+await connection.query(`CREATE TABLE IF NOT EXISTS WaterSettings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  projectId VARCHAR(36) NOT NULL,
+  level DOUBLE,
+  opacity DOUBLE,
+  color VARCHAR(50),
+  colorBlendFactor DOUBLE,
+  bumpHeight DOUBLE,
+  waveLength DOUBLE,
+  windForce DOUBLE,
+  FOREIGN KEY (projectId) REFERENCES projects(projectId)
+) ENGINE=InnoDB;
+`)
+
+await connection.query(`CREATE TABLE IF NOT EXISTS SettingsTable (
+  projectId VARCHAR(36) NOT NULL PRIMARY KEY,
+  settings TEXT
+) ENGINE=InnoDB;
+`)
+
     console.log(`All tables ensured.`);
   } catch (error) {
     console.error("Error creating tables:", error.message);
