@@ -130,7 +130,7 @@ const AddSystem = async (req, res) => {
 };
 const getArea = async (req, res) => {
   const project_id = req.params.id;
-  console.log(`Fetching area for project_id: ${project_id}`);
+  (`Fetching area for project_id: ${project_id}`);
 
   let connection;
   try {
@@ -151,7 +151,7 @@ const getArea = async (req, res) => {
 
 const getDisipline = async (req, res) => {
   const project_id = req.params.id;
-  console.log(`Fetching discipline for project_id: ${project_id}`);
+  (`Fetching discipline for project_id: ${project_id}`);
 
   let connection;
   try {

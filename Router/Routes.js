@@ -209,13 +209,28 @@ router.delete('/delete-comment/:id',deleteComment)
 router.delete('/delete=all-comments/:id',deleteAllComment)
 
 
-// General tag info 
-router.get("/getgeneral-taginfo-details/:id/:tagId",GetGeneralTagInfoUsingTagId);
+//iroamer
+
+router.get('/getmodel/:projectId/:ids',GetModal)
+
+
+
+
+
+
+
+//iroamer
+
+router.get('/getmodel/:projectId/:areaIds/:discIds/:systemIds/:tagIds',GetModal)
+
+
+
 router.get("/get-allgeneral-taginfo/:id",GetAllGeneralTagInfo);
 router.get("/getgeneral-taginfo-field/:id",GetGeneralTagInfoField);
 router.put("/update-general-taginfo-field",UpdateGEneralTagInfField);
 router.put("/edit-general-taginfo-list",EditGeneralTagInfo);
 router.put("/delete-general-taginfo-list",ClearTagInfoFields);
+
 
 
 module.exports = router;
