@@ -45,6 +45,8 @@ const {
   UpdateGEneralTagInfField,
   EditGeneralTagInfo,
   ClearTagInfoFields,
+  SaveUpdatedTagFile,
+  ClearEditableValveFields,
 } = require("../controllers/TagController");
 const {
   AddArea,
@@ -113,6 +115,7 @@ router.post("/saveelementswithuniqueId/:id", SaveElementswithUniqueId);
 router.post("/updatespiddata/:id", updatespiddata);
 
 router.post("/addtag", AddTag);
+ router.post("/save-updated-tagfile",SaveUpdatedTagFile)
 router.get("/get-alltags/:id", getTags);
 router.delete("/delete-tag/:id", deleteTag);
 router.put("/update-tag/:id", updateTag);
@@ -133,7 +136,7 @@ router.get("/getequipment-details/:id/:tagId", GetEquipmentListUsingTagId);
 
 router.get("/getvalve/:id", GetValveList);
 router.put("/edit-valve-list", EditValveList);
-router.delete("/delete-valve-list/:id", deleteTag);
+router.put("/delete-valve-list", ClearEditableValveFields);
 router.get("/getvalve-details/:id/:tagId", GetValveListUsingTagId);
 
 router.post("/assign-tag", AssignTag);

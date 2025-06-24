@@ -10,13 +10,98 @@ const generateCustomID = (prefix) => {
   return uniqueID;
 };
 
+const SaveUpdatedTagFile = async (req, res) => {
+  try {
+    const { fileNamePath } = req.body;
+
+    if (!fileNamePath || !Array.isArray(fileNamePath) || fileNamePath.length === 0) {
+      return res.status(400).json({ error: "No valid files data provided" });
+    }
+
+    const uploadDir = path.join(__dirname, "..", "unassignedModels");
+    
+    // Make sure target directory exists
+    try {
+      await fs.access(uploadDir);
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        await fs.mkdir(uploadDir, { recursive: true });
+      } else {
+        throw err;
+      }
+    }
+
+    const results = [];
+
+    for (const fileData of fileNamePath) {
+      try {
+        const destPath = path.join(uploadDir, fileData.name);
+
+        // Check if file exists
+        try {
+          await fs.access(destPath); // File exists — we will overwrite
+        } catch {
+          results.push({
+            name: fileData.name,
+            status: "skipped",
+            reason: "File does not exist"
+          });
+          continue;
+        }
+
+        // Handle buffer data
+        let buffer;
+        if (fileData.data instanceof ArrayBuffer) {
+          buffer = Buffer.from(fileData.data);
+        } else if (fileData.data?.data) {
+          buffer = Buffer.from(Object.values(fileData.data.data));
+        } else if (Array.isArray(fileData.data)) {
+          buffer = Buffer.from(fileData.data);
+        } else {
+          throw new Error("Invalid file data format");
+        }
+
+        // Overwrite the existing file
+        await fs.writeFile(destPath, buffer);
+
+        results.push({
+          name: fileData.name,
+          path: destPath,
+          status: "updated"
+        });
+
+      } catch (fileError) {
+        console.error(`Error updating file ${fileData?.name}:`, fileError);
+        results.push({
+          name: fileData?.name || 'unknown',
+          status: "failed",
+          error: fileError.message
+        });
+      }
+    }
+
+    res.status(200).json({
+      status: 200,
+      message: "File update process completed",
+      files: results,
+    });
+
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    res.status(500).json({
+      status: 500,
+      message: "Server error",
+      error: err.message,
+    });
+  }
+};
+
+
 const AddTag = async (req, res) => {
   let connection;
-  console.log(req.body);
+  const { tagNumber, parentTag, name, type, model, project_id } = req.body;
 
   try {
-    const { tagNumber, parentTag, name, type, model, project_id } = req.body;
-
     // Validate required fields
     if (!tagNumber || !name || !type) {
       return res
@@ -24,61 +109,64 @@ const AddTag = async (req, res) => {
         .json({ error: "tagNumber, name, and type are required" });
     }
 
-    // Generate unique tagId
     const tagId = generateCustomID("TAG-");
-
     connection = await pool.getConnection();
-
-    // Start transaction
     await connection.beginTransaction();
 
-    // Insert into Tags table
+    // 🟨 If model is provided, try to move it to /tags if not already there
+    if (model) {
+      const sourcePath = path.join(__dirname, "..", "models", model);
+      const destPath = path.join(__dirname, "..", "tags", model);
+
+      try {
+        // Check if target already exists
+        await fs.access(destPath);
+        console.log(`File already exists in /tags: ${model}`);
+      } catch (err) {
+        if (err.code === 'ENOENT') {
+          // File doesn't exist, move it
+          await fs.rename(sourcePath, destPath);
+          console.log(`Moved model file to /tags: ${model}`);
+        } else {
+          throw err; // Re-throw unexpected FS errors
+        }
+      }
+    }
+
+    // ⬇ Insert into Tags table
     await connection.query(
-      `INSERT INTO Tags (tagId, number, name, parenttag, type, filename,projectId)
+      `INSERT INTO Tags (tagId, number, name, parenttag, type, filename, projectId)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        tagId,
-        tagNumber,
-        name,
-        parentTag || null,
-        type,
-        model || null,
-        project_id,
-      ]
+      [tagId, tagNumber, name, parentTag || null, type, model || null, project_id]
     );
 
-    // Insert into TagInfo table
     await connection.query(
-      `INSERT INTO TagInfo (projectId,tagId, tag, type)
+      `INSERT INTO TagInfo (projectId, tagId, tag, type)
        VALUES (?, ?, ?, ?)`,
       [project_id, tagId, name, type]
     );
 
-    // Conditional inserts based on type
+    // ⬇ Insert based on type
     if (type.toLowerCase() === "line") {
       await connection.query(
-        `INSERT INTO LineList (projectId,tagId, tag)
-         VALUES (?,?, ?)`,
+        `INSERT INTO LineList (projectId, tagId, tag) VALUES (?, ?, ?)`,
         [project_id, tagId, name]
       );
     } else if (type.toLowerCase() === "equipment") {
       await connection.query(
-        `INSERT INTO EquipmentList (projectId,tagId, tag)
-         VALUES (?,?, ?)`,
+        `INSERT INTO EquipmentList (projectId, tagId, tag) VALUES (?, ?, ?)`,
         [project_id, tagId, name]
       );
     } else if (type.toLowerCase() === "valve") {
       await connection.query(
-        `INSERT INTO ValveList (projectId,tagId, tag )
-         VALUES (?,?,?)`,
+        `INSERT INTO ValveList (projectId, tagId, tag) VALUES (?, ?, ?)`,
         [project_id, tagId, name]
       );
     }
 
-    // Commit transaction
     await connection.commit();
-
     res.status(201).json({ message: "Tag added successfully", tagId });
+
   } catch (error) {
     if (connection) await connection.rollback();
     console.error("Error adding tag:", error.message);
@@ -87,6 +175,7 @@ const AddTag = async (req, res) => {
     if (connection) connection.release();
   }
 };
+
 
 const getTags = async (req, res) => {
   const projectId = req.params.id;
@@ -972,6 +1061,80 @@ const EditValveList = async (req, res) => {
     }
   }
 };
+const ClearEditableValveFields = async (req, res) => {
+  let connection;
+  try {
+    const { projectId, tag } = req.body;
+
+    // Validate required fields
+    if (!projectId || !tag) {
+      return res.status(400).json({
+        error: "projectId and tag are required fields",
+      });
+    }
+
+    // Get DB connection
+    connection = await pool.getConnection();
+
+    // Build update query to clear only editable fields
+    const clearQuery = `
+      UPDATE valveList 
+      SET 
+        area = NULL,
+        discipline = NULL,
+        Systm = NULL,
+        function_code = NULL,
+        sequence_number = NULL,
+        line_id = NULL,
+        line_number = NULL,
+        pid = NULL,
+        isometric = NULL,
+        data_sheet = NULL,
+        drawings = NULL,
+        design_pressure = NULL,
+        design_temperature = NULL,
+        size = NULL,
+        paint_system = NULL,
+        purchase_order = NULL,
+        supplier = NULL,
+        information_status = NULL,
+        equipment_status = NULL,
+        comment = NULL
+      WHERE tag = ? AND projectId = ?;
+    `;
+
+    const [result] = await connection.query(clearQuery, [tag, projectId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        error: "No valve found with the given tag and projectId",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Editable fields cleared successfully",
+      affectedRows: result.affectedRows,
+      clearedTag: tag,
+      projectId,
+    });
+  } catch (error) {
+    console.error("Error clearing editable fields:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
+  } finally {
+    if (connection) {
+      try {
+        await connection.release();
+      } catch (releaseError) {
+        console.error("Error releasing connection:", releaseError);
+      }
+    }
+  }
+};
 
 // General TagInfo
 // get all general taginfo using tagId
@@ -1371,4 +1534,6 @@ module.exports = {
   UpdateGEneralTagInfField,
   EditGeneralTagInfo,
   ClearTagInfoFields,
+  SaveUpdatedTagFile,
+  ClearEditableValveFields
 };

@@ -223,7 +223,6 @@ const saveBulkModal = async (req, res) => {
   }
 };
 
-
 const saveChangedUnassigned = async (req, res) => {
   let connection;
   try {
@@ -238,8 +237,9 @@ const saveChangedUnassigned = async (req, res) => {
     }
 
     const uploadDir = path.join(__dirname, "..", "unassignedModels");
+    const modelsDir = path.join(__dirname, "..", "models"); // Path to models directory
     
-    // Create directory if it doesn't exist
+    // Create directories if they don't exist
     try {
       await fs.access(uploadDir);
     } catch (err) {
@@ -257,13 +257,13 @@ const saveChangedUnassigned = async (req, res) => {
       try {
         const id = generateCustomID("TAG");
         const destPath = path.join(uploadDir, fileData.name);
+        const modelFilePath = path.join(modelsDir, fileData.name); // Path to file in models folder
         
         // Handle different data formats
         let buffer;
         if (fileData.data instanceof ArrayBuffer) {
           buffer = Buffer.from(fileData.data);
         } else if (fileData.data?.data) {
-          // Handle case where data is nested in a data property
           buffer = Buffer.from(Object.values(fileData.data.data));
         } else if (Array.isArray(fileData.data)) {
           buffer = Buffer.from(fileData.data);
@@ -279,12 +279,32 @@ const saveChangedUnassigned = async (req, res) => {
           [id, projectId, fileData.name]
         );
 
-        results.push({
-          name: fileData.name,
-          path: destPath,
-          status: "saved",
-          insertedId: result.insertId,
-        });
+        // Delete the file from models folder if it exists
+        try {
+          await fs.access(modelFilePath);
+          await fs.unlink(modelFilePath);
+          console.log(`Deleted file from models folder: ${modelFilePath}`);
+          results.push({
+            name: fileData.name,
+            path: destPath,
+            status: "saved",
+            insertedId: result.insertId,
+            modelFileDeleted: true
+          });
+        } catch (deleteError) {
+          if (deleteError.code === 'ENOENT') {
+            console.log(`File not found in models folder: ${modelFilePath}`);
+            results.push({
+              name: fileData.name,
+              path: destPath,
+              status: "saved",
+              insertedId: result.insertId,
+              modelFileDeleted: false
+            });
+          } else {
+            throw deleteError;
+          }
+        }
       } catch (fileError) {
         console.error(`Error processing file ${fileData?.name}:`, fileError);
         results.push({
