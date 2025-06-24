@@ -215,13 +215,6 @@ router.get('/getmodel/:projectId/:areaIds/:discIds/:systemIds/:tagIds',GetModal)
 
 
 
-
-
-
-
-
-
-
 router.get("/get-allgeneral-taginfo/:id",GetAllGeneralTagInfo);
 router.get("/getgeneral-taginfo-field/:id",GetGeneralTagInfoField);
 router.put("/update-general-taginfo-field",UpdateGEneralTagInfField);
