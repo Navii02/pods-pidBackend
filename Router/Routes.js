@@ -6,6 +6,10 @@ const {
   getDocuments,
   UpdateProject,
   DeleteProject,
+  saveSavedView,
+  AllSavedViews,
+  deleteSavedView,
+  updateSavedView,
 } = require("../controllers/commonControllers");
 const documentupload = require("../multer/documentmulter");
 const convertedFilesUpload = require("../multer/Modalmulter");
@@ -202,7 +206,6 @@ router.delete("/delete-unassignedmodel/:id", DeleteUnassigned);
 router.get("/comment/get-comments/:id", getCommentStatus);
 router.post("/comment/add-comment", addComment);
 router.delete("/comment/delete-comment/:id", deleteCommentStatus);
-
 router.get('/getcomments/:id',getCommentStatus)
 router.post('/savecomment',saveComment)
 router.get('/get-allcomments/:id',getAllComments)
@@ -211,12 +214,9 @@ router.put('/update-comment',updateComment)
 router.delete('/delete-comment/:id',deleteComment)
 router.delete('/delete=all-comments/:id',deleteAllComment)
 
-
-
-
 router.get('/getmodel/:projectId/:areaIds/:discIds/:systemIds/:tagIds',GetModal)
 
-
+// all-saved-view
 
 router.get("/get-allgeneral-taginfo/:id",GetAllGeneralTagInfo);
 router.get("/getgeneral-taginfo-field/:id",GetGeneralTagInfoField);
@@ -224,6 +224,9 @@ router.put("/update-general-taginfo-field",UpdateGEneralTagInfField);
 router.put("/edit-general-taginfo-list",EditGeneralTagInfo);
 router.put("/delete-general-taginfo-list",ClearTagInfoFields);
 
-
+router.post("/save-saved-view",saveSavedView);
+router.get("/all-saved-view/:projectId",AllSavedViews)
+router.delete("/delete-saved-view/:projectId/:viewid",deleteSavedView)
+router.put("/update-saved-view",updateSavedView);
 
 module.exports = router;

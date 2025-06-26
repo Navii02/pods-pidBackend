@@ -395,6 +395,20 @@ await connection.query(`CREATE TABLE IF NOT EXISTS WaterSettings (
   FOREIGN KEY (projectId) REFERENCES projects(projectId)
 ) ENGINE=InnoDB;
 `)
+await connection.query(`CREATE TABLE IF NOT EXISTS Views (
+  name VARCHAR(255) NOT NULL,
+  projectId VARCHAR(36) NOT NULL,
+  posX DOUBLE,
+  posY DOUBLE,
+  posZ DOUBLE,
+  targX DOUBLE,
+  targY DOUBLE,
+  targZ DOUBLE,
+  PRIMARY KEY (name, projectId),
+  FOREIGN KEY (projectId) REFERENCES projects(projectId) ON DELETE CASCADE
+) ENGINE=InnoDB;
+`)
+
 
 await connection.query(`CREATE TABLE IF NOT EXISTS SettingsTable (
   projectId VARCHAR(36) NOT NULL PRIMARY KEY,

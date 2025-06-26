@@ -8,7 +8,8 @@ const generateCustomID = (prefix) => {
 };
 
 const CreateProject = async (req, res) => {
-  const { projectName, projectNumber, projectDescription, projectPath } = req.body;
+  const { projectName, projectNumber, projectDescription, projectPath } =
+    req.body;
 
   if (!projectName) {
     return res.status(400).json({
@@ -55,11 +56,11 @@ const CreateProject = async (req, res) => {
     ];
 
     // Insert unit and field for general taginfo
-      const userDefinedFields = Array.from({ length: 50 }, (_, i) => ({
-        taginfo: `Taginfo${i + 1}`,
-        taginfounit: `Taginfounit${i + 1}`,
-        tagcheck: "checked",
-      }));
+    const userDefinedFields = Array.from({ length: 50 }, (_, i) => ({
+      taginfo: `Taginfo${i + 1}`,
+      taginfounit: `Taginfounit${i + 1}`,
+      tagcheck: "checked",
+    }));
 
     for (const status of defaultStatuses) {
       const statusId = generateCustomID("CST");
@@ -70,11 +71,11 @@ const CreateProject = async (req, res) => {
     }
 
     for (let { taginfo, taginfounit, tagcheck } of userDefinedFields) {
-  await connection.query(
-    `INSERT IGNORE INTO UserTagInfoFieldUnits (projectId, field, unit, statuscheck) VALUES (?, ?, ?, ?)`,
-    [projectId, taginfo, taginfounit, tagcheck]
-  );
-}
+      await connection.query(
+        `INSERT IGNORE INTO UserTagInfoFieldUnits (projectId, field, unit, statuscheck) VALUES (?, ?, ?, ?)`,
+        [projectId, taginfo, taginfounit, tagcheck]
+      );
+    }
 
     // Fetch and return the newly created project
     const [projectRows] = await connection.query(
@@ -100,7 +101,13 @@ const CreateProject = async (req, res) => {
 };
 
 const UpdateProject = async (req, res) => {
-  const { projectId, projectName, projectNumber, projectDescription, projectPath } = req.body;
+  const {
+    projectId,
+    projectName,
+    projectNumber,
+    projectDescription,
+    projectPath,
+  } = req.body;
 
   // Validate required fields
   if (!projectId || !projectName) {
@@ -243,7 +250,7 @@ const getprojects = async (req, res) => {
     res.status(200).json({ row });
   } catch (error) {
     res.status(500).json("Internal server error");
-  }finally {
+  } finally {
     if (connection) connection.release();
   }
 };
@@ -283,7 +290,7 @@ const savedocuments = async (req, res) => {
   } catch (error) {
     console.error("DB insert error:", error);
     res.status(500).json({ message: "Database error", error: error.message });
-  }finally {
+  } finally {
     if (connection) connection.release();
   }
 };
@@ -291,7 +298,7 @@ const savedocuments = async (req, res) => {
 const getDocuments = async (req, res) => {
   const { projectId } = req.query;
   console.log(projectId);
-let connection
+  let connection;
   try {
     connection = await pool.getConnection();
 
@@ -304,9 +311,171 @@ let connection
   } catch (error) {
     console.error("Error fetching documents:", error);
     res.status(500).json({ message: "Internal server error" });
-  }finally {
-   connection.release();
+  } finally {
+    connection.release();
   }
 };
 
-module.exports = { CreateProject, getprojects, savedocuments, getDocuments,DeleteProject,UpdateProject };
+// save-saved-view
+const saveSavedView = async (req, res) => {
+  console.log(req.body);
+ const { name, projectId, posX, posY, posZ, targX, targY, targZ } = req.body;
+   let connection ;
+  if (!name || !projectId) {
+    return res.status(400).json({ message: 'Missing view name or projectId' });
+  }
+
+  try {
+     connection = await pool.getConnection();
+
+    // Check if the view already exists
+    const [rows] = await connection.query(
+      `SELECT * FROM Views WHERE name = ? AND projectId = ?`,
+      [name, projectId]
+    );
+
+    if (rows.length > 0) {
+      connection.release();
+      return res.status(409).json({ message: 'View with this name already exists' });
+    }
+
+    // Insert the new view
+    await connection.query(
+      `INSERT INTO Views (name, projectId, posX, posY, posZ, targX, targY, targZ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name, projectId, posX, posY, posZ, targX, targY, targZ]
+    );
+
+    connection.release();
+    res.status(200).json({ message: 'View saved successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+
+  
+};
+
+// All saved view
+const AllSavedViews = async(req,res)=>{
+const projectId  = req.params.projectId;
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    const [rows] = await connection.query(
+      "SELECT * FROM Views WHERE projectId = ?",
+      [projectId]
+    );
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Error fetching Views:", error);
+    res.status(500).json({ message: "Internal server error" });
+  } finally {
+    connection.release();
+  }
+}
+//delete-saved-view
+const deleteSavedView = async (req, res) => {
+  const { projectId,viewid } = req.params;
+  // console.log(id);
+
+  let connection;
+
+  try {
+    connection = await pool.getConnection();
+
+    const [existingView] = await connection.query(
+      "SELECT * FROM Views WHERE name = ? AND projectId = ?",
+      [viewid,projectId]
+    );
+
+    if (existingView.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "View not found",
+      });
+    }
+
+    await connection.query("DELETE FROM Views WHERE name = ? AND projectId = ?", [viewid,projectId]);
+
+    res.status(200).json({
+      success: true,
+      message: "Views deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting view:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete view",
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+// update-saved-view
+const updateSavedView = async (req, res) => {
+  const { projectId,oldName,newName } = req.body;
+  console.log(req.body);
+
+  let connection;
+
+  try {
+    if (!newName ) {
+      return res.status(400).json({
+        success: false,
+        message: "Name is required fields",
+      });
+    }
+
+    connection = await pool.getConnection();
+    // Get the current tag values before updating
+    const [existingView] = await connection.query(
+      "SELECT * FROM Views WHERE name = ? AND projectId = ?",
+      [oldName,projectId]
+    );
+
+    if (existingView.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        success: false,
+        message: "View not found",
+      });
+    }
+
+    // Update the Tags table
+    await connection.query(
+      `UPDATE Views 
+       SET  name = ?
+       WHERE name = ? AND projectId = ?`,
+      [newName,oldName,projectId]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Views updated successfully",
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error("Error updating tag:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update tag",
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+module.exports = {
+  CreateProject,
+  getprojects,
+  savedocuments,
+  getDocuments,
+  DeleteProject,
+  UpdateProject,
+  saveSavedView,
+  AllSavedViews,
+  deleteSavedView,
+  updateSavedView
+};
