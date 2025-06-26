@@ -51,6 +51,8 @@ const {
   ClearTagInfoFields,
   SaveUpdatedTagFile,
   ClearEditableValveFields,
+  ClearEditableLineFields,
+  ClearEditableEquipmentFields,
 } = require("../controllers/TagController");
 const {
   AddArea,
@@ -100,6 +102,7 @@ const {
   updateComment,
   deleteCommentStatus,
   deleteAllComment,
+  updateCommentinPage,
 } = require("../controllers/CommentController");
 const { GetModal } = require("../controllers/Iroamer");
 const router = express.Router();
@@ -130,12 +133,12 @@ router.get(
 
 router.get("/getline/:id", GetLineList);
 router.put("/edit-line-list", EditLineList);
-router.delete("/delete-line-list/:id", deleteTag);
+router.put("/delete-line-list", ClearEditableLineFields);
 router.get("/getline-details/:id/:tagId", GetLineListUsingTagId);
 
 router.get("/getequipment/:id", GetequipmentList);
 router.put("/edit-equipment-list", EditEquipmentList);
-router.delete("/delete-equipment-list/:id", deleteTag);
+router.put("/delete-equipment-list", ClearEditableEquipmentFields);
 router.get("/getequipment-details/:id/:tagId", GetEquipmentListUsingTagId);
 
 router.get("/getvalve/:id", GetValveList);
@@ -213,6 +216,7 @@ router.get('/get-comments/:id',getComments)
 router.put('/update-comment',updateComment)
 router.delete('/delete-comment/:id',deleteComment)
 router.delete('/delete=all-comments/:id',deleteAllComment)
+router.put('/update-comment-infield',updateCommentinPage)
 
 router.get('/getmodel/:projectId/:areaIds/:discIds/:systemIds/:tagIds',GetModal)
 

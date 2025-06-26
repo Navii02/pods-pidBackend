@@ -1065,6 +1065,8 @@ const ClearEditableValveFields = async (req, res) => {
   let connection;
   try {
     const { projectId, tag } = req.body;
+    console.log(req.body);
+    
 
     // Validate required fields
     if (!projectId || !tag) {
@@ -1100,7 +1102,7 @@ const ClearEditableValveFields = async (req, res) => {
         information_status = NULL,
         equipment_status = NULL,
         comment = NULL
-      WHERE tag = ? AND projectId = ?;
+      WHERE tagId = ? AND projectId = ?;
     `;
 
     const [result] = await connection.query(clearQuery, [tag, projectId]);
@@ -1135,7 +1137,165 @@ const ClearEditableValveFields = async (req, res) => {
     }
   }
 };
+const ClearEditableLineFields = async (req, res) => {
+  let connection;
+  try {
+    const { projectId, tagId } = req.body;
+    console.log(req.body);
+    
+    // Validate required fields
+    if (!projectId || !tagId) {
+      return res.status(400).json({
+        error: "projectId and tag are required fields",
+      });
+    }
 
+    // Get DB connection
+    connection = await pool.getConnection();
+
+    // Build update query to clear only editable fields
+    const clearQuery = `
+      UPDATE LineList 
+      SET 
+        fluidCode = NULL,
+        lineId = NULL,
+        medium = NULL,
+        lineSizeIn = NULL,
+        lineSizeNb = NULL,
+        pipingSpec = NULL,
+        insType = NULL,
+        insThickness = NULL,
+        heatTrace = NULL,
+        lineFrom = NULL,
+        lineTo = NULL,
+        pnid = NULL,
+        pipingIso = NULL,
+        pipingStressIso = NULL,
+        maxOpPress = NULL,
+        maxOpTemp = NULL,
+        dsgnPress = NULL,
+        minDsgnTemp = NULL,
+        maxDsgnTemp = NULL,
+        testPress = NULL,
+        testMedium = NULL,
+        testMediumPhase = NULL,
+        massFlow = NULL,
+        volFlow = NULL,
+        density = NULL,
+        velocity = NULL,
+        paintSystem = NULL,
+        ndtGroup = NULL,
+        chemCleaning = NULL,
+        pwht = NULL
+      WHERE tagId = ? AND projectId = ?;
+    `;
+
+    const [result] = await connection.query(clearQuery, [tagId, projectId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        error: "No line found with the given tag and projectId",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Editable fields cleared successfully",
+      affectedRows: result.affectedRows,
+      clearedTag: tagId,
+      projectId,
+    });
+  } catch (error) {
+    console.error("Error clearing editable fields:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
+  } finally {
+    if (connection) {
+      try {
+        await connection.release();
+      } catch (releaseError) {
+        console.error("Error releasing connection:", releaseError);
+      }
+    }
+  }
+};
+const ClearEditableEquipmentFields = async (req, res) => {
+  let connection;
+  try {
+    const { projectId, tagId } = req.body;
+    console.log(req.body);
+    
+    // Validate required fields
+    if (!projectId || !tagId) {
+      return res.status(400).json({
+        error: "projectId and tag are required fields",
+      });
+    }
+
+    // Get DB connection
+    connection = await pool.getConnection();
+
+    // Build update query to clear only editable fields
+    const clearQuery = `
+      UPDATE EquipmentList 
+      SET 
+        descr = NULL,
+        qty = NULL,
+        capacity = NULL,
+        type = NULL,
+        materials = NULL,
+        capacityDuty = NULL,
+        dims = NULL,
+        dsgnPress = NULL,
+        opPress = NULL,
+        dsgnTemp = NULL,
+        opTemp = NULL,
+        dryWeight = NULL,
+        opWeight = NULL,
+        pnid = NULL,
+        supplier = NULL,
+        remarks = NULL,
+        initStatus = NULL,
+        revision = NULL,
+        revisionDate = NULL
+      WHERE tagId = ? AND projectId = ?;
+    `;
+
+    const [result] = await connection.query(clearQuery, [tagId, projectId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        error: "No equipment found with the given tag and projectId",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Editable fields cleared successfully",
+      affectedRows: result.affectedRows,
+      clearedTag: tagId,
+      projectId,
+    });
+  } catch (error) {
+    console.error("Error clearing editable fields:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
+  } finally {
+    if (connection) {
+      try {
+        await connection.release();
+      } catch (releaseError) {
+        console.error("Error releasing connection:", releaseError);
+      }
+    }
+  }
+};
 // General TagInfo
 // get all general taginfo using tagId
 const GetGeneralTagInfoUsingTagId = async (req, res) => {
@@ -1169,6 +1329,8 @@ const GetGeneralTagInfoUsingTagId = async (req, res) => {
 // get all general taginfo fields
 const GetGeneralTagInfoField = async (req, res) => {
   const { id } = req.params;
+  console.log(id);
+  
   let connection;
 
   try {
@@ -1535,5 +1697,7 @@ module.exports = {
   EditGeneralTagInfo,
   ClearTagInfoFields,
   SaveUpdatedTagFile,
-  ClearEditableValveFields
+  ClearEditableValveFields,
+  ClearEditableLineFields,
+  ClearEditableEquipmentFields
 };

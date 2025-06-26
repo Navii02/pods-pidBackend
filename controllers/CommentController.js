@@ -314,6 +314,8 @@ const updateComment = async (req, res) => {
       projectId,
       sourcetype
     } = req.body;
+    console.log(req.body);
+    
  const closedBy ="jpo@poulconsult"
     if (!number) {
       return res.status(400).json({
@@ -459,4 +461,83 @@ const updateComment = async (req, res) => {
     if (connection) connection.release();
   }
 };
-module.exports = { getComments, addComment, deleteComment,saveComment,getCommentStatus,getAllComments,deleteCommentStatus,updateComment,deleteAllComment};
+const updateCommentinPage = async (req, res) => {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    const {
+      number,
+      status,
+      
+      closedDate,
+      coOrdinateX,
+      coOrdinateY,
+      coOrdinateZ,
+      comment,
+      docNumber,
+      priority,
+      projectId,
+      sourcetype
+    } = req.body;
+    console.log(req.body);
+    
+ const closedBy ="jpo@poulconsult"
+    if (!number) {
+      return res.status(400).json({
+        success: false,
+        message: "Comment number is required",
+      });
+    }
+
+    // Prepare update fields
+    const updateFields = {
+      comment,
+      priority,
+      status
+    };
+
+    // Handle closed status fields
+    if (status === 'closed') {
+      updateFields.closedBy = closedBy || 'dummyclosedby';
+      updateFields.closedDate = closedDate ? new Date(closedDate) : new Date();
+    } else if (status !== 'closed') {
+      updateFields.closedBy = null;
+      updateFields.closedDate = null;
+    }
+
+    const [result] = await connection.query(
+      "UPDATE CommentTable SET ? WHERE number = ?",
+      [updateFields, number]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Comment not found",
+      });
+    }
+    const [results] = await connection.query(
+      "SELECT * FROM CommentTable WHERE number = ? ORDER BY createddate DESC",
+      [number]
+    );
+ console.log(results);
+ 
+    res.status(200).json({
+      success: true,
+      message: "Comment updated successfully",
+      data: results[0],
+    });
+
+  } catch (error) {
+    console.error("Error updating comment:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+module.exports = { getComments, addComment, deleteComment,saveComment,getCommentStatus,getAllComments,deleteCommentStatus,updateComment,deleteAllComment,updateCommentinPage};

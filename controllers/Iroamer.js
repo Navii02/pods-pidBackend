@@ -31,6 +31,7 @@ const GetModal = async (req, res) => {
         tr.disc, 
         tr.sys, 
         tr.tag,
+         t.tagId,
         t.filename,
         t.projectId
       FROM Tree tr
@@ -99,6 +100,7 @@ const GetModal = async (req, res) => {
           disc: row.disc,
           sys: row.sys,
           tag: row.tag,
+          tagId:row.tagId,
           projectId: row.projectId,
           file: fileDetails,
           filename: row.filename,
@@ -122,5 +124,6 @@ const GetModal = async (req, res) => {
     if (connection) connection.release();
   }
 };
+
 
 module.exports = { GetModal };
