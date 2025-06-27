@@ -8,8 +8,7 @@ const generateCustomID = (prefix) => {
 };
 
 const CreateProject = async (req, res) => {
-  const { projectName, projectNumber, projectDescription, projectPath } =
-    req.body;
+  const { projectName, projectNumber, projectDescription, projectPath } = req.body;
 
   if (!projectName) {
     return res.status(400).json({
@@ -77,6 +76,84 @@ const CreateProject = async (req, res) => {
       );
     }
 
+    // Default ground settings
+    const defaultGroundSettings = {
+      level: 1, // Base level (0-1 range)
+      color: "#018C01", // Green color
+      opacity: 1.0, // Fully opaque
+    };
+
+    // Insert default ground settings
+    await connection.query(
+      "INSERT INTO GroundSettings (projectId, level, color, opacity) VALUES (?, ?, ?, ?)",
+      [
+        projectId,
+        defaultGroundSettings.level,
+        defaultGroundSettings.color,
+        defaultGroundSettings.opacity,
+      ]
+    );
+
+    // Default water settings
+    const defaultWaterSettings = {
+      level: 0.25, // 25% level (0-1 range)
+      opacity: 0.9, // 90% opacity
+      color: "#000000", // Deep blue
+      colorBlendFactor: 0.1, // 30% blend
+      bumpHeight: 5, // Default bump height
+      waveLength: 0.02, // Default wave length
+      windForce: 5, // Default wind force
+    };
+
+    // Insert default water settings
+    await connection.query(
+      "INSERT INTO WaterSettings (projectId, level, opacity, color, colorBlendFactor, bumpHeight, waveLength, windForce) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        projectId,
+        defaultWaterSettings.level,
+        defaultWaterSettings.opacity,
+        defaultWaterSettings.color,
+        defaultWaterSettings.colorBlendFactor,
+        defaultWaterSettings.bumpHeight,
+        defaultWaterSettings.waveLength,
+        defaultWaterSettings.windForce,
+      ]
+    );
+
+    // Default other settings
+    const defaultSettings = {
+      camera: {
+        fov: 45,
+        nearClip: 0.1,
+        farClip: 1000,
+        angularSensibility: 2000,
+        wheelSensibility: 1,
+        cameraSpeed: 1.0,
+        inertia: 0.4,
+      },
+      light: {
+        intensity: 1.0,
+        color: "#ffffff",
+        specularColor: "#ffffff",
+        shadowsEnabled: true,
+      },
+      material: {
+        metallic: 0.5,
+        roughness: 0.5,
+        reflectionIntensity: 1.0,
+      },
+      measure: {
+        unit: "m",
+        scaleValue: 1,
+      },
+    };
+
+    // Insert default settings
+    await connection.query(
+      "INSERT INTO SettingsTable (projectId, settings) VALUES (?, ?)",
+      [projectId, JSON.stringify(defaultSettings)]
+    );
+
     // Fetch and return the newly created project
     const [projectRows] = await connection.query(
       "SELECT * FROM projects WHERE projectId = ?",
@@ -99,7 +176,6 @@ const CreateProject = async (req, res) => {
     if (connection) connection.release();
   }
 };
-
 const UpdateProject = async (req, res) => {
   const {
     projectId,
@@ -185,20 +261,22 @@ const UpdateProject = async (req, res) => {
   }
 };
 
+
 const DeleteProject = async (req, res) => {
-  const { projectId } = req.body;
-
-  // Validate required fields
-  if (!projectId) {
-    return res.status(400).json({
-      success: false,
-      message: "Project ID is required",
-    });
-  }
-
   let connection;
   try {
+    const { projectId } = req.body;
+
+    // Validate required fields
+    if (!projectId) {
+      return res.status(400).json({
+        success: false,
+        message: "Project ID is required",
+      });
+    }
+
     connection = await pool.getConnection();
+    await connection.beginTransaction(); // Start a transaction
 
     // Check if the project exists
     const [existingProjects] = await connection.query(
@@ -206,11 +284,17 @@ const DeleteProject = async (req, res) => {
       [projectId]
     );
     if (existingProjects.length === 0) {
+      await connection.rollback();
       return res.status(404).json({
         success: false,
         message: "Project not found",
       });
     }
+
+    // Delete dependent records from child tables
+    await connection.query("DELETE FROM GroundSettings WHERE projectId = ?", [projectId]);
+    await connection.query("DELETE FROM WaterSettings WHERE projectId = ?", [projectId]);
+    await connection.query("DELETE FROM SettingsTable WHERE projectId = ?", [projectId]);
 
     // Delete the project
     const [result] = await connection.query(
@@ -219,17 +303,24 @@ const DeleteProject = async (req, res) => {
     );
 
     if (result.affectedRows === 0) {
+      await connection.rollback();
       return res.status(404).json({
         success: false,
         message: "Project not found",
       });
     }
 
+    await connection.commit(); // Commit the transaction
+
+    console.log(`Deleted project with projectId: ${projectId}`);
     res.status(200).json({
       success: true,
-      message: "Project deleted successfully",
+      message: "Project and related settings deleted successfully",
     });
   } catch (error) {
+    if (connection) {
+      await connection.rollback(); // Roll back the transaction on error
+    }
     console.error("Error deleting project:", error);
     res.status(500).json({
       success: false,

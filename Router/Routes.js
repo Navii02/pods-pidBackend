@@ -104,7 +104,7 @@ const {
   deleteAllComment,
   updateCommentinPage,
 } = require("../controllers/CommentController");
-const { GetModal } = require("../controllers/Iroamer");
+const { GetModal, getGroundSettings, getWaterSettings, getBasesettings, updateWaterSettings, updateGroundSettings, updateBaseSettings } = require("../controllers/Iroamer");
 const router = express.Router();
 
 router.post("/createproject", CreateProject);
@@ -192,11 +192,7 @@ router.delete("/deleteEntity", DeleteEntity);
 
 //bulkmodel
 
-router.post(
-  "/upload-bulk-files",
-  convertedFilesUpload.array("files"),
-  uploadbulkModal
-);
+router.post("/upload-bulk-files",uploadbulkModal);
 router.post("/save-bulkimport", saveBulkModal);
 router.post("/save-changedfiles", saveChangedUnassigned);
 router.get("/get-unassignedmodels/:id", GetUnassignedmodels);
@@ -232,5 +228,18 @@ router.post("/save-saved-view",saveSavedView);
 router.get("/all-saved-view/:projectId",AllSavedViews)
 router.delete("/delete-saved-view/:projectId/:viewid",deleteSavedView)
 router.put("/update-saved-view",updateSavedView);
+
+//
+ 
+ router.get('/get-ground-settings/:projectId',getGroundSettings)
+  router.get('/get-water-settings/:projectId',getWaterSettings)
+   router.get('/get-base-settings/:projectId',getBasesettings)
+   router.put('/upate-water-settings',updateWaterSettings)
+      router.put('/upate-ground-settings',updateGroundSettings)
+   router.put('/upate-base-settings',updateBaseSettings)
+
+   
+
+
 
 module.exports = router;

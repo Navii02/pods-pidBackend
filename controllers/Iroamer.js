@@ -124,6 +124,169 @@ const GetModal = async (req, res) => {
     if (connection) connection.release();
   }
 };
+const getGroundSettings = async (req, res) => {
+  let connection;
+  try {
+    const { projectId } = req.params;
+    if (!projectId) {
+      return res.status(400).json({ error: "projectId is required" });
+    }
+    connection = await pool.getConnection();
+    const [rows] = await connection.query("SELECT * FROM GroundSettings WHERE projectId = ?", [projectId]);
+    console.log(rows);
+    res.status(200).json( rows[0] );
+  } catch (error) {
+    console.error("Error fetching GroundSettings:", error);
+    res.status(500).json("Internal server error");
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+const getWaterSettings = async (req, res) => {
+  let connection;
+  try {
+    const { projectId } = req.params;
+    if (!projectId) {
+      return res.status(400).json({ error: "projectId is required" });
+    }
+    connection = await pool.getConnection();
+    const [rows] = await connection.query("SELECT * FROM WaterSettings WHERE projectId = ?", [projectId]);
+    console.log(rows);
+    res.status(200).json(rows[0] );
+  } catch (error) {
+    console.error("Error fetching WaterSettings:", error);
+    res.status(500).json("Internal server error");
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+const getBasesettings = async (req, res) => {
+  let connection;
+  try {
+    const { projectId } = req.params;
+    if (!projectId) {
+      return res.status(400).json({ error: "projectId is required" });
+    }
+    connection = await pool.getConnection();
+    const [rows] = await connection.query("SELECT * FROM SettingsTable WHERE projectId = ?", [projectId]);
+    console.log(rows);
+    res.status(200).json(rows[0] );
+  } catch (error) {
+    console.error("Error fetching SettingsTable:", error);
+    res.status(500).json("Internal server error");
+  } finally {
+    if (connection) connection.release();
+  }
+};
 
 
-module.exports = { GetModal };
+const updateGroundSettings = async (req, res) => {
+  let connection;
+  try {
+    
+    const { projectId,level, color, opacity } = req.body;
+
+    if (!projectId) {
+      return res.status(400).json({ error: "projectId is required" });
+    }
+    if (level === undefined || color === undefined || opacity === undefined) {
+      return res.status(400).json({ error: "level, color, and opacity are required" });
+    }
+
+    connection = await pool.getConnection();
+    const [result] = await connection.query(
+      "UPDATE GroundSettings SET level = ?, color = ?, opacity = ? WHERE projectId = ?",
+      [level, color, opacity, projectId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "No GroundSettings found for the provided projectId" });
+    }
+
+    console.log(`Updated GroundSettings for projectId: ${projectId}`);
+    res.status(200).json({ message: "GroundSettings updated successfully" });
+  } catch (error) {
+    console.error("Error updating GroundSettings:", error);
+    res.status(500).json("Internal server error");
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+const updateWaterSettings = async (req, res) => {
+  let connection;
+  try {
+    const { projectId,level, opacity, color, colorBlendFactor, bumpHeight, waveLength, windForce } = req.body;
+    console.log(req.body);
+    
+
+    if (!projectId) {
+      return res.status(400).json({ error: "projectId is required" });
+    }
+    if (
+      level === undefined ||
+      opacity === undefined ||
+      color === undefined ||
+      colorBlendFactor === undefined ||
+      bumpHeight === undefined ||
+      waveLength === undefined ||
+      windForce === undefined
+    ) {
+      return res.status(400).json({ error: "All WaterSettings fields are required" });
+    }
+
+    connection = await pool.getConnection();
+    const [result] = await connection.query(
+      "UPDATE WaterSettings SET level = ?, opacity = ?, color = ?, colorBlendFactor = ?, bumpHeight = ?, waveLength = ?, windForce = ? WHERE projectId = ?",
+      [level, opacity, color, colorBlendFactor, bumpHeight, waveLength, windForce, projectId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "No WaterSettings found for the provided projectId" });
+    }
+
+    console.log(`Updated WaterSettings for projectId: ${projectId}`);
+    res.status(200).json({ message: "WaterSettings updated successfully" });
+  } catch (error) {
+    console.error("Error updating WaterSettings:", error);
+    res.status(500).json("Internal server error");
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+const updateBaseSettings = async (req, res) => {
+  let connection;
+  try {
+    const {  projectId,settings } = req.body;
+
+    if (!projectId) {
+      return res.status(400).json({ error: "projectId is required" });
+    }
+    if (settings === undefined) {
+      return res.status(400).json({ error: "settings is required" });
+    }
+
+    connection = await pool.getConnection();
+    const [result] = await connection.query(
+      "UPDATE SettingsTable SET settings = ? WHERE projectId = ?",
+      [settings, projectId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "No SettingsTable entry found for the provided projectId" });
+    }
+
+    console.log(`Updated SettingsTable for projectId: ${projectId}`);
+    res.status(200).json({ message: "SettingsTable updated successfully" });
+  } catch (error) {
+    console.error("Error updating SettingsTable:", error);
+    res.status(500).json("Internal server error");
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+module.exports = { GetModal,getGroundSettings,getBasesettings,getWaterSettings,updateBaseSettings,updateWaterSettings,updateGroundSettings };

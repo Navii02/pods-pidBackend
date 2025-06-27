@@ -197,8 +197,6 @@ const getTags = async (req, res) => {
 const deleteTag = async (req, res) => {
   const { id } = req.params;
   const tagId = id;
-  // console.log(id);
-
   let connection;
 
   try {
@@ -216,7 +214,33 @@ const deleteTag = async (req, res) => {
       });
     }
 
+    const { filename, type, projectId } = existingTag[0];
+
+    // Delete from database
     await connection.query("DELETE FROM Tags WHERE tagId = ?", [tagId]);
+
+    // Delete from type-specific table
+    const typeLower = type?.toLowerCase();
+    if (typeLower === 'line') {
+      await connection.query("DELETE FROM LineList WHERE tagId = ?", [tagId]);
+    } else if (typeLower === 'equipment') {
+      await connection.query("DELETE FROM EquipmentList WHERE tagId = ?", [tagId]);
+    } else if (typeLower === 'valve') {
+      await connection.query("DELETE FROM ValveList WHERE tagId = ?", [tagId]);
+    }
+
+    // Delete associated file from project-specific directory
+    if (filename && projectId) {
+      const filePath = path.join(__dirname, "..", "tags", projectId, filename);
+      try {
+        await fs.unlink(filePath);
+        console.log(`Deleted tag file: ${filePath}`);
+      } catch (err) {
+        if (err.code !== 'ENOENT') { // Ignore if file doesn't exist
+          throw err;
+        }
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -227,6 +251,7 @@ const deleteTag = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to delete tag",
+      details: error.message
     });
   } finally {
     if (connection) connection.release();
@@ -1371,12 +1396,6 @@ const GetAllGeneralTagInfo = async (req, res) => {
     );
     if (result.length > 0) {
       res.status(200).json(result);
-    } else {
-      res
-        .status(404)
-        .json({
-          message: "TagInfo not found for the given projectId and tagid",
-        });
     }
   } catch (error) {
     console.error("Error fetching TagInfo:", error);
@@ -1411,7 +1430,7 @@ const UpdateGEneralTagInfField = async (req, res) => {
 
     if (existingField.length === 0) {
       await connection.rollback();
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Field not found",
       });
