@@ -100,6 +100,8 @@ const SaveUpdatedTagFile = async (req, res) => {
 const AddTag = async (req, res) => {
   let connection;
   const { tagNumber, parentTag, name, type, model, project_id } = req.body;
+  console.log(req.body);
+  
 
   try {
     // Validate required fields
@@ -115,20 +117,29 @@ const AddTag = async (req, res) => {
 
     // 🟨 If model is provided, try to move it to /tags if not already there
     if (model) {
-      const sourcePath = path.join(__dirname, "..", "models", model);
-      const destPath = path.join(__dirname, "..", "tags", model);
+    const modelsDir = path.join(__dirname, "..", "models", project_id);
+      const tagsDir = path.join(__dirname, "..", "tags", project_id);
+      const sourceFile = path.join(modelsDir, model);
+      const destFile = path.join(tagsDir, model);
+
+   
 
       try {
         // Check if target already exists
-        await fs.access(destPath);
-        console.log(`File already exists in /tags: ${model}`);
+     // Create tags directory if it doesn't exist
+        await fs.mkdir(tagsDir, { recursive: true });
+        
+        // Check if source file exists
+        await fs.access(sourceFile);
+        
+        // Move the specific file
+        await fs.rename(sourceFile, destFile);
       } catch (err) {
         if (err.code === 'ENOENT') {
-          // File doesn't exist, move it
-          await fs.rename(sourcePath, destPath);
-          console.log(`Moved model file to /tags: ${model}`);
+          console.log(`File not found: ${sourceFile}`);
+          // Continue without failing if file doesn't exist
         } else {
-          throw err; // Re-throw unexpected FS errors
+          throw err; // Re-throw unexpected errors
         }
       }
     }

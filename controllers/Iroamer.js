@@ -272,7 +272,7 @@ const updateBaseSettings = async (req, res) => {
     connection = await pool.getConnection();
     const [result] = await connection.query(
       "UPDATE SettingsTable SET settings = ? WHERE projectId = ?",
-      [settings, projectId]
+      [JSON.stringify(settings), projectId]
     );
 
     if (result.affectedRows === 0) {

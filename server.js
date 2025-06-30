@@ -28,14 +28,22 @@ app.use("/models/:projectId",(req, res, next) => {
   }
 );
 
-app.use( "/tags/:projectId",(req, res, next) => {
-    express.static(path.join(__dirname, "tags", req.params.projectId))(
-      req,
-      res,
-      next
-    );
+// Add this BEFORE your static file middleware
+app.use((req, res, next) => {
+  if (req.path.endsWith('/') && req.path.length > 1) {
+    return res.redirect(301, req.path.slice(0, -1));
   }
-);
+  next();
+});
+
+// Then your existing static file middleware
+app.use("/tags/:projectId", (req, res, next) => {
+  const staticMiddleware = express.static(
+    path.join(__dirname, "tags", req.params.projectId)
+  );
+  req.url = req.url.replace(`/${req.params.projectId}`, "");
+  staticMiddleware(req, res, next);
+});
 
 const PORT = process.env.PORT || 5000;
 
