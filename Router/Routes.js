@@ -216,13 +216,15 @@ router.put('/update-comment-infield',updateCommentinPage)
 
 router.get('/getmodel/:projectId/:areaIds/:discIds/:systemIds/:tagIds',GetModal)
 
-// all-saved-view
+// all-saved-view  
 
 router.get("/get-allgeneral-taginfo/:id",GetAllGeneralTagInfo);
 router.get("/getgeneral-taginfo-field/:id",GetGeneralTagInfoField);
 router.put("/update-general-taginfo-field",UpdateGEneralTagInfField);
 router.put("/edit-general-taginfo-list",EditGeneralTagInfo);
 router.put("/delete-general-taginfo-list",ClearTagInfoFields);
+router.get("/getgeneral-taginfo-details/:id/:tagId",GetGeneralTagInfoUsingTagId);
+
 
 router.post("/save-saved-view",saveSavedView);
 router.get("/all-saved-view/:projectId",AllSavedViews)
