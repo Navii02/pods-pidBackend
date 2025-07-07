@@ -415,6 +415,30 @@ await connection.query(`CREATE TABLE IF NOT EXISTS SettingsTable (
   settings TEXT
 ) ENGINE=InnoDB;
 `)
+// Store original meshes
+await connection.query(`CREATE TABLE IF NOT EXISTS OriginalMeshes (
+  MeshId VARCHAR(100) PRIMARY KEY,
+  data JSON,
+  projectId VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+`)
+// Store octree
+await connection.query(`CREATE TABLE IF NOT EXISTS Octree (
+  OctreeId VARCHAR(100) PRIMARY KEY,
+  data JSON,
+  projectId VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+`)
+// Store merged meshes
+await connection.query(`CREATE TABLE IF NOT EXISTS MergedMeshes (
+  MergedMeshId VARCHAR(100) PRIMARY KEY,
+  data JSON,
+  projectId VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+`)
 
     console.log(`All tables ensured.`);
   } catch (error) {
