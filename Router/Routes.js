@@ -104,6 +104,9 @@ const {
   deleteAllComment,
   updateCommentinPage,
 } = require("../controllers/CommentController");
+const path = require('path');
+const fs = require('fs').promises; 
+
 const { GetModal, getGroundSettings, getWaterSettings, getBasesettings, updateWaterSettings, updateGroundSettings, updateBaseSettings } = require("../controllers/Iroamer");
 const router = express.Router();
 
@@ -240,7 +243,25 @@ router.put("/update-saved-view",updateSavedView);
       router.put('/upate-ground-settings',updateGroundSettings)
    router.put('/upate-base-settings',updateBaseSettings)
 
-   
+  //  get-allfiles
+
+  router.get('/get-allfiles/:projectId', (req, res) => {
+  const projectId = req.params.projectId;
+  console.log("projectId",projectId)
+  const dirPath = path.join(__dirname, "..", "tags", projectId);
+  console.log(dirPath)
+ const unassignedDir = path.join(__dirname, "..", "unassignedModels", projectId);
+  console.log(unassignedDir)
+
+fs.readdir(dirPath, (err, files) => {
+  if (err) {
+    console.error("Failed to read directory", err);
+    return res.status(500).json({ error: 'Unable to read directory', details: err.message });
+  }
+  console.log("Files:", files);
+  res.json(files);
+});
+});
 
 
 
