@@ -45,6 +45,15 @@ app.use("/tags/:projectId", (req, res, next) => {
   staticMiddleware(req, res, next);
 });
 
+app.use("/unassignedModels/:projectId", (req, res, next) => {
+  const staticMiddleware = express.static(
+    path.join(__dirname, "unassignedModels", req.params.projectId)
+  );
+  req.url = req.url.replace(`/${req.params.projectId}`, "");
+  staticMiddleware(req, res, next);
+});
+
+
 const PORT = process.env.PORT || 5000;
 
 async function startApp() {
