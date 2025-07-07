@@ -108,6 +108,7 @@ const path = require('path');
 const fs = require('fs').promises; 
 
 const { GetModal, getGroundSettings, getWaterSettings, getBasesettings, updateWaterSettings, updateGroundSettings, updateBaseSettings } = require("../controllers/Iroamer");
+const { SaveOriginalMesh, saveOctree, saveMergedMesh } = require("../controllers/GlobalModelcontroller");
 const router = express.Router();
 
 router.post("/createproject", CreateProject);
@@ -242,6 +243,16 @@ router.put("/update-saved-view",updateSavedView);
    router.put('/upate-water-settings',updateWaterSettings)
       router.put('/upate-ground-settings',updateGroundSettings)
    router.put('/upate-base-settings',updateBaseSettings)
+
+
+ //global-model
+
+  router.post('/save-orignalmesh',SaveOriginalMesh)
+    router.post('/save-octree',saveOctree)
+     router.post('/save-mergedmesh',saveMergedMesh)
+
+
+
 
   //  get-allfiles
 
