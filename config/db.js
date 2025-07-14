@@ -431,7 +431,7 @@ await connection.query(`
   CREATE TABLE IF NOT EXISTS Octree (
     id INT AUTO_INCREMENT PRIMARY KEY,
     OctreeId VARCHAR(100),
-    data JSON,
+    data TEXT,
     projectId VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB;

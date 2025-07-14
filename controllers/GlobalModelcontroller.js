@@ -49,6 +49,7 @@ const SaveOriginalMesh = async (req, res) => {
 
 const saveOctree = async (req, res) => {
   const { OctreeId, data, projectId } = req.body;
+  console.log(req.body);
   const filename = `${projectId}.json`;
   const filepath = path.join(__dirname, 'octrees', filename);
 
@@ -58,9 +59,9 @@ const saveOctree = async (req, res) => {
 
     connection = await pool.getConnection();
     await connection.query(
-      `INSERT INTO Octree (OctreeId, data_path, projectId) VALUES (?, ?, ?)`,
-      [OctreeId, filepath, projectId]
-    );
+  `INSERT INTO Octree (OctreeId, data, projectId) VALUES (?, ?, ?)`,
+  [OctreeId, JSON.stringify(data), projectId]
+);
 
     res.status(200).json({ success: true, message: "Octree saved successfully." });
   } catch (error) {
@@ -74,9 +75,7 @@ const saveOctree = async (req, res) => {
 
 const saveMergedMesh = async (req, res) => {
   const { MergedMeshId, data, projectId } = req.body;
-  console.log(data);
   
-
   let connection;
   try {
     connection = await pool.getConnection();

@@ -11,8 +11,12 @@ dotenv.config();
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+// app.use(express.json({ limit: "50mb" }));
+// app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+app.use(express.json({ limit: '2000mb' })); // 2 GB
+app.use(express.urlencoded({ extended: true, limit: '2000mb', parameterLimit: 1000000 }));
+
 
 app.use("/api", router);
 app.use("/upload", express.static(path.join(__dirname, "documents")));
