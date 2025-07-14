@@ -5,6 +5,9 @@ const { pool } = require("../config/db");
 const { v4: uuidv4 } = require("uuid");
 const AssignedModels = require("../multer/AssignedModelMulter");
 const convertedFilesUpload = require('../multer/Modalmulter');
+const os = require('os');
+
+
 
 const generateCustomID = (prefix) => {
   const uuid = uuidv4();
@@ -13,14 +16,32 @@ const generateCustomID = (prefix) => {
 };
 
 const converterMap = {
-  '.fbx': 'FbxExporter/FBX2glTF-windows-x64.exe',
-  '.rvm': 'rvmparser/rvmparser.exe',
-  '.ifc': 'IfcConvert/IfcConvert.exe',
-  '.dae': 'COLLADA2GLTF/COLLADA2GLTF-bin.exe',
-  '.iges': 'mayo/mayo.exe',
-  '.igs': 'mayo/mayo.exe',
-  // No entries needed for .glb, .gltf, .babylon as they don't need conversion
+  '.fbx': {
+    win32: 'FbxExporter/FBX2glTF-windows-x64.exe',
+    linux: 'FBX2glTF-linux-x64', // replace with actual Linux binary if available
+  },
+  '.rvm': {
+    win32: 'rvmparser/rvmparser.exe',
+    linux: 'rvmparser/rvmparser-linux', // if you have or build a native Linux version
+  },
+  '.ifc': {
+    win32: 'IfcConvert/IfcConvert.exe',
+    linux: 'IfcConvert-linux64', // assume IfcOpenShell provides Linux binary
+  },
+  '.dae': {
+    win32: 'COLLADA2GLTF/COLLADA2GLTF-bin.exe',
+    linux: 'COLLADA2GLTF-v2.1.5-linux/COLLADA2GLTF-bin', // if available for Linux
+  },
+  '.iges': {
+    win32: 'mayo/mayo.exe',
+    linux: 'mayo/mayo', // mayo provides a Linux binary
+  },
+  '.igs': {
+    win32: 'mayo/mayo.exe',
+    linux: 'mayo/mayo',
+  },
 };
+
 
 const supportedFormats = [
   ...Object.keys(converterMap),
@@ -46,19 +67,18 @@ const buildExecParams = (ext, inputPath, outputPath) => {
   }
 };
 
+
+
 const convertFile = async (file, projectId) => {
   const ext = path.extname(file.originalname).toLowerCase();
-  
-  // Check if format is supported
+
   if (!supportedFormats.includes(ext)) {
     throw new Error(`Unsupported file format: ${ext}`);
   }
 
-  // Create project-specific folder if it doesn't exist
   const projectDir = path.resolve('models', projectId);
   await fs.mkdir(projectDir, { recursive: true });
 
-  // For formats that don't need conversion
   if (['.glb', '.gltf', '.babylon'].includes(ext)) {
     const outputPath = path.resolve(projectDir, file.originalname);
     await fs.copyFile(file.path, outputPath);
@@ -66,38 +86,49 @@ const convertFile = async (file, projectId) => {
       name: file.originalname,
       path: outputPath,
       originalPath: file.path,
-      converted: false
+      converted: false,
     };
   }
 
-  // For formats that need conversion
-  const converterExe = converterMap[ext];
-  if (!converterExe) throw new Error(`No converter for: ${ext}`);
+  const platform = os.platform(); // 'linux', 'win32', 'darwin'
 
-  const inputPath = file.path;
-  const fileStem = path.basename(file.originalname, ext);
-  const outputPath = path.resolve(projectDir, fileStem + '.glb');
-  const converterPath = path.resolve('converters', converterExe);
+  // Select platform-specific converter
+  const converterEntry = converterMap[ext];
+  if (!converterEntry) throw new Error(`No converter for: ${ext}`);
 
+  // Pick the right converter based on OS
+  const converterExecutable =
+    typeof converterEntry === 'string'
+      ? converterEntry
+      : converterEntry[platform];
+
+  if (!converterExecutable) {
+    throw new Error(`No converter available for ${ext} on ${platform}`);
+  }
+
+  const converterPath = path.resolve('converters', converterExecutable);
   try {
     await fs.access(converterPath);
   } catch {
     throw new Error(`Converter not found: ${converterPath}`);
   }
 
+  const inputPath = file.path;
+  const fileStem = path.basename(file.originalname, ext);
+  const outputPath = path.resolve(projectDir, fileStem + '.glb');
   const execParams = buildExecParams(ext, inputPath, outputPath);
 
   return new Promise((resolve, reject) => {
     execFile(converterPath, execParams, (err, stdout, stderr) => {
       if (err) {
         console.error(`Error converting ${file.originalname}:`, stderr);
-        return reject(new Error(stderr));
+        return reject(new Error(stderr || err.message));
       }
       resolve({
         name: path.basename(outputPath),
         path: outputPath,
-        originalPath: inputPath, // Keep original path reference
-        converted: true
+        originalPath: inputPath,
+        converted: true,
       });
     });
   });

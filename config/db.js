@@ -7,6 +7,7 @@ const createTempPool = async () => {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     waitForConnections: true,
+      connectionLimit: 100,
     queueLimit: 0,
   });
 };
@@ -43,6 +44,7 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
+    connectionLimit: 100,
   queueLimit: 0,
   timezone: "Z",
   connectTimeout: 10000,
@@ -420,7 +422,7 @@ await connection.query(`
   CREATE TABLE IF NOT EXISTS OriginalMeshes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     MeshId VARCHAR(100),
-    data JSON,
+     data TEXT,
     projectId VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB;
@@ -442,7 +444,7 @@ await connection.query(`
   CREATE TABLE IF NOT EXISTS MergedMeshes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     MergedMeshId VARCHAR(100),
-    data JSON,
+    data TEXT,
     projectId VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB;

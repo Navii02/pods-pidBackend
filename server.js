@@ -27,6 +27,9 @@ app.use("/models/:projectId",(req, res, next) => {
     );
   }
 );
+app.use('/octrees', express.static(path.join(__dirname, 'octrees')));
+app.use('/originalMeshes', express.static(path.join(__dirname, 'originalMeshes')));
+app.use('/mergedMeshes', express.static(path.join(__dirname, 'mergedMeshes')));
 
 // Add this BEFORE your static file middleware
 app.use((req, res, next) => {

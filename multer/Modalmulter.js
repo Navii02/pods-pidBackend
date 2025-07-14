@@ -4,7 +4,7 @@ const fs = require('fs');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const projectId = req.body.projectId || 'unknown';
+    const projectId = req.headers['projectId'] || 'unknown';
     const modelsDir = path.join(process.cwd(), 'models', projectId);
     
     // Create directory if it doesn't exist
