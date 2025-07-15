@@ -5,3 +5,7 @@ documents
 models
 tags
 .env
+temp_uploads
+octrees
+mergedMeshes/
+originalMeshes/

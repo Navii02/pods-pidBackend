@@ -14,7 +14,8 @@ const {
 const documentupload = require("../multer/documentmulter");
 const convertedFilesUpload = require("../multer/Modalmulter");
 const AssignedModels = require("../multer/AssignedModelMulter");
-
+const multer = require('multer');
+const upload = multer();
 const {
   getsvgDocs,
   getSpidDocuments,
@@ -108,7 +109,7 @@ const path = require('path');
 const fs = require('fs').promises; 
 
 const { GetModal, getGroundSettings, getWaterSettings, getBasesettings, updateWaterSettings, updateGroundSettings, updateBaseSettings } = require("../controllers/Iroamer");
-const { SaveOriginalMesh, saveOctree, saveMergedMesh, DeleteGlobalModal, getOctreeData, getGlobalModalData } = require("../controllers/GlobalModelcontroller");
+const { SaveOriginalMesh, saveMergedMesh, DeleteGlobalModal,  getGlobalModalData, finalizeOctree, handleChunkUpload, getProjectMetadata, getOctreeMetadata, getMeshDataChunk } = require("../controllers/GlobalModelcontroller");
 const router = express.Router();
 
 router.post("/createproject", CreateProject);
@@ -248,11 +249,13 @@ router.put("/update-saved-view",updateSavedView);
  //global-model
 
   router.post('/save-orignalmesh',SaveOriginalMesh)
-    router.post('/save-octree',saveOctree)
-     router.post('/save-mergedmesh',saveMergedMesh)
+    // router.post('/save-octree',saveOctree)
+    
       router.delete('/delete-global-modal/:projectId',DeleteGlobalModal)
       router.get('/get-octree/:projectId',getGlobalModalData)
-
+router.post('/octree/chunk', upload.single('chunkData'), handleChunkUpload);
+      router.post('/octree/finalize',finalizeOctree)
+router.post("/save-merged-mesh", upload.single("file"), saveMergedMesh);
 
 
 

@@ -7,6 +7,7 @@ const createTempPool = async () => {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     waitForConnections: true,
+      connectionLimit: 100,
     queueLimit: 0,
   });
 };
@@ -43,6 +44,7 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
+    connectionLimit: 100,
   queueLimit: 0,
   timezone: "Z",
   connectTimeout: 10000,
@@ -285,50 +287,54 @@ const createTables = async () => {
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 )`);
     await connection.query(`
-  CREATE TABLE IF NOT EXISTS Areatable (
-    areaId VARCHAR(100) NOT NULL PRIMARY KEY,
-    area VARCHAR(100) UNIQUE, 
-    name VARCHAR(100) UNIQUE,
-    project_id VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  ) ENGINE=InnoDB;
+ CREATE TABLE IF NOT EXISTS Areatable (
+  areaId VARCHAR(100) NOT NULL PRIMARY KEY,
+  area VARCHAR(100),
+  name VARCHAR(100),
+  project_id VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_area_per_project (area, project_id) 
+) ENGINE=InnoDB;
 `);
 
     await connection.query(`
-  CREATE TABLE IF NOT EXISTS Disctable (
-    discId VARCHAR(100) NOT NULL PRIMARY KEY,
-    disc VARCHAR(100) UNIQUE,  
-    name VARCHAR(100),
-    project_id VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  ) ENGINE=InnoDB;
+ CREATE TABLE IF NOT EXISTS Disctable (
+  discId VARCHAR(100) NOT NULL PRIMARY KEY,
+  disc VARCHAR(100),
+  name VARCHAR(100),
+  project_id VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_disc_per_project (disc, project_id)
+);
 `);
 
     await connection.query(`
-  CREATE TABLE IF NOT EXISTS Systable (
-    sysId VARCHAR(100) NOT NULL PRIMARY KEY,
-    sys VARCHAR(100) UNIQUE, 
-    name VARCHAR(100),
-    project_id VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  ) ENGINE=InnoDB;
+ CREATE TABLE IF NOT EXISTS Systable (
+  sysId VARCHAR(100) NOT NULL PRIMARY KEY,
+  sys VARCHAR(100),
+  name VARCHAR(100),
+  project_id VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_sys_per_project (sys, project_id)
+) ENGINE=InnoDB;
 `);
 
     await connection.query(`
     CREATE TABLE IF NOT EXISTS Tree (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        area VARCHAR(100), 
-        disc VARCHAR(100) DEFAULT NULL,  
-        sys VARCHAR(100) DEFAULT NULL,  
-        tag VARCHAR(767) DEFAULT NULL, 
-        name VARCHAR(100),
-        project_id VARCHAR(100),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (area) REFERENCES Areatable(area) ON DELETE CASCADE ON UPDATE CASCADE,
-        FOREIGN KEY (disc) REFERENCES Disctable(disc) ON DELETE CASCADE ON UPDATE CASCADE,
-        FOREIGN KEY (sys) REFERENCES Systable(sys) ON DELETE CASCADE ON UPDATE CASCADE,
-        FOREIGN KEY (tag) REFERENCES Tags(number) ON DELETE CASCADE ON UPDATE CASCADE
-    ) ENGINE=InnoDB;
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    area VARCHAR(100), 
+    disc VARCHAR(100) DEFAULT NULL,  
+    sys VARCHAR(100) DEFAULT NULL,  
+    tag VARCHAR(191) DEFAULT NULL, 
+    name VARCHAR(100),
+    project_id VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (area, project_id) REFERENCES Areatable(area, project_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (disc, project_id) REFERENCES Disctable(disc, project_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (sys, project_id) REFERENCES Systable(sys, project_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (tag) REFERENCES Tags(number) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
 `);
     await connection.query(`
   CREATE TABLE IF NOT EXISTS UnassignedModels (
@@ -420,7 +426,7 @@ await connection.query(`
   CREATE TABLE IF NOT EXISTS OriginalMeshes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     MeshId VARCHAR(100),
-    data JSON,
+     data TEXT,
     projectId VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB;
@@ -442,7 +448,7 @@ await connection.query(`
   CREATE TABLE IF NOT EXISTS MergedMeshes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     MergedMeshId VARCHAR(100),
-    data JSON,
+    data TEXT,
     projectId VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB;
@@ -459,10 +465,10 @@ await connection.query(`
 };
 
 pool.on("acquire", (connection) => {
-  console.log("Connection acquired:", connection.threadId);
+  //console.log("Connection acquired:", connection.threadId);
 });
 pool.on("release", (connection) => {
-  console.log("Connection released:", connection.threadId);
+  //console.log("Connection released:", connection.threadId);
 });
 
 module.exports = {

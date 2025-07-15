@@ -172,7 +172,7 @@ const getDisipline = async (req, res) => {
 
 const getSystems = async (req, res) => {
   const project_id = req.params.id;
-  console.log(`Fetching systems for project_id: ${project_id}`);
+  //console.log(`Fetching systems for project_id: ${project_id}`);
 
   let connection;
   try {
@@ -629,7 +629,7 @@ const AddProjectTags = async (req, res) => {
   //console.log(req.params);
   
   const project_id = req.params.id;
-  console.log(`Fetching systems for project_id: ${project_id}`);
+  //console.log(`Fetching systems for project_id: ${project_id}`);
 
   let connection;
   try {
