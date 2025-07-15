@@ -1,13 +1,11 @@
-const path = require('path');
-const fs = require('fs').promises; 
-const { execFile } = require('child_process');
+const path = require("path");
+const fs = require("fs").promises;
+const { execFile } = require("child_process");
 const { pool } = require("../config/db");
 const { v4: uuidv4 } = require("uuid");
 const AssignedModels = require("../multer/AssignedModelMulter");
-const convertedFilesUpload = require('../multer/Modalmulter');
-const os = require('os');
-
-
+const convertedFilesUpload = require("../multer/Modalmulter");
+const os = require("os");
 
 const generateCustomID = (prefix) => {
   const uuid = uuidv4();
@@ -16,58 +14,55 @@ const generateCustomID = (prefix) => {
 };
 
 const converterMap = {
-  '.fbx': {
-    win32: 'FbxExporter/FBX2glTF-windows-x64.exe',
-    linux: 'FBX2glTF-linux-x64', // replace with actual Linux binary if available
+  ".fbx": {
+    win32: "FbxExporter/FBX2glTF-windows-x64.exe",
+    linux: "FBX2glTF-linux-x64", // replace with actual Linux binary if available
   },
-  '.rvm': {
-    win32: 'rvmparser/rvmparser.exe',
-    linux: 'rvmparser/rvmparser-linux', // if you have or build a native Linux version
+  ".rvm": {
+    win32: "rvmparser/rvmparser.exe",
+    linux: "rvmparser/rvmparser-linux", // if you have or build a native Linux version
   },
-  '.ifc': {
-    win32: 'IfcConvert/IfcConvert.exe',
-    linux: 'IfcConvert-linux64', // assume IfcOpenShell provides Linux binary
+  ".ifc": {
+    win32: "IfcConvert/IfcConvert.exe",
+    linux: "IfcConvert-linux64", // assume IfcOpenShell provides Linux binary
   },
-  '.dae': {
-    win32: 'COLLADA2GLTF/COLLADA2GLTF-bin.exe',
-    linux: 'COLLADA2GLTF-v2.1.5-linux/COLLADA2GLTF-bin', // if available for Linux
+  ".dae": {
+    win32: "COLLADA2GLTF/COLLADA2GLTF-bin.exe",
+    linux: "COLLADA2GLTF-v2.1.5-linux/COLLADA2GLTF-bin", // if available for Linux
   },
-  '.iges': {
-    win32: 'mayo/mayo.exe',
-    linux: 'mayo/mayo', // mayo provides a Linux binary
+  ".iges": {
+    win32: "mayo/mayo.exe",
+    linux: "mayo/mayo", // mayo provides a Linux binary
   },
-  '.igs': {
-    win32: 'mayo/mayo.exe',
-    linux: 'mayo/mayo',
+  ".igs": {
+    win32: "mayo/mayo.exe",
+    linux: "mayo/mayo",
   },
 };
 
-
 const supportedFormats = [
   ...Object.keys(converterMap),
-  '.glb',
-  '.gltf',
-  '.babylon'
+  ".glb",
+  ".gltf",
+  ".babylon",
 ];
 
 const buildExecParams = (ext, inputPath, outputPath) => {
   switch (ext) {
-    case '.fbx':
-    case '.dae':
-      return ['--input', inputPath, '--output', outputPath];
-    case '.rvm':
-      return [`--output-gltf=${outputPath}`, '--tolerance=0.01', inputPath];
-    case '.iges':
-    case '.igs':
-      return ['--export', outputPath, inputPath];
-    case '.ifc':
+    case ".fbx":
+    case ".dae":
+      return ["--input", inputPath, "--output", outputPath];
+    case ".rvm":
+      return [`--output-gltf=${outputPath}`, "--tolerance=0.01", inputPath];
+    case ".iges":
+    case ".igs":
+      return ["--export", outputPath, inputPath];
+    case ".ifc":
       return [inputPath, outputPath];
     default:
       throw new Error(`No params defined for ${ext}`);
   }
 };
-
-
 
 const convertFile = async (file, projectId) => {
   const ext = path.extname(file.originalname).toLowerCase();
@@ -76,10 +71,10 @@ const convertFile = async (file, projectId) => {
     throw new Error(`Unsupported file format: ${ext}`);
   }
 
-  const projectDir = path.resolve('models', projectId);
+  const projectDir = path.resolve("models", projectId);
   await fs.mkdir(projectDir, { recursive: true });
 
-  if (['.glb', '.gltf', '.babylon'].includes(ext)) {
+  if ([".glb", ".gltf", ".babylon"].includes(ext)) {
     const outputPath = path.resolve(projectDir, file.originalname);
     await fs.copyFile(file.path, outputPath);
     return {
@@ -98,7 +93,7 @@ const convertFile = async (file, projectId) => {
 
   // Pick the right converter based on OS
   const converterExecutable =
-    typeof converterEntry === 'string'
+    typeof converterEntry === "string"
       ? converterEntry
       : converterEntry[platform];
 
@@ -106,7 +101,7 @@ const convertFile = async (file, projectId) => {
     throw new Error(`No converter available for ${ext} on ${platform}`);
   }
 
-  const converterPath = path.resolve('converters', converterExecutable);
+  const converterPath = path.resolve("converters", converterExecutable);
   try {
     await fs.access(converterPath);
   } catch {
@@ -115,7 +110,7 @@ const convertFile = async (file, projectId) => {
 
   const inputPath = file.path;
   const fileStem = path.basename(file.originalname, ext);
-  const outputPath = path.resolve(projectDir, fileStem + '.glb');
+  const outputPath = path.resolve(projectDir, fileStem + ".glb");
   const execParams = buildExecParams(ext, inputPath, outputPath);
 
   return new Promise((resolve, reject) => {
@@ -134,12 +129,10 @@ const convertFile = async (file, projectId) => {
   });
 };
 
-
-
 const uploadbulkModal = async (req, res) => {
   // First handle the file upload using multer middleware
-  const uploadMiddleware = convertedFilesUpload.array('files');
-  
+  const uploadMiddleware = convertedFilesUpload.array("files");
+
   uploadMiddleware(req, res, async (err) => {
     try {
       if (err) {
@@ -147,10 +140,10 @@ const uploadbulkModal = async (req, res) => {
       }
 
       const files = req.files;
-      const projectId = req.body.projectId 
-      
+      const projectId = req.body.projectId;
+
       if (!files?.length) {
-        return res.status(400).json({ error: 'No files uploaded' });
+        return res.status(400).json({ error: "No files uploaded" });
       }
 
       // First validate all files have supported formats
@@ -165,42 +158,47 @@ const uploadbulkModal = async (req, res) => {
         files.map(async (file) => {
           try {
             const result = await convertFile(file, projectId);
-            console.log(result.converted ? 'Converted:' : 'Copied:', result.name);
-            return { 
-              name: result.name, 
+            console.log(
+              result.converted ? "Converted:" : "Copied:",
+              result.name
+            );
+            return {
+              name: result.name,
               path: result.path,
-              originalName: file.originalname
+              originalName: file.originalname,
             };
           } catch (err) {
-            console.error(`Failed to process ${file.originalname}:`, err.message);
+            console.error(
+              `Failed to process ${file.originalname}:`,
+              err.message
+            );
             return {
               name: file.originalname,
               error: err.message,
-              originalPath: file.path
+              originalPath: file.path,
             };
           }
         })
       );
 
       // Separate successful and failed conversions
-      const successful = convertedFiles.filter(f => !f.error);
-      const failed = convertedFiles.filter(f => f.error);
+      const successful = convertedFiles.filter((f) => !f.error);
+      const failed = convertedFiles.filter((f) => f.error);
 
-      res.status(200).json({ 
+      res.status(200).json({
         convertedFiles: successful,
         failedFiles: failed,
-        message: `Processed ${successful.length} files successfully, ${failed.length} failed`
+        message: `Processed ${successful.length} files successfully, ${failed.length} failed`,
       });
     } catch (err) {
-      console.error('Bulk upload failed:', err);
-      res.status(500).json({ 
-        error: err.message || 'Conversion error',
-        details: err.stack
+      console.error("Bulk upload failed:", err);
+      res.status(500).json({
+        error: err.message || "Conversion error",
+        details: err.stack,
       });
     }
   });
 };
-
 
 const saveBulkModal = async (req, res) => {
   const files = req.body; // Expecting [{ projectId, name }]
@@ -212,73 +210,102 @@ const saveBulkModal = async (req, res) => {
 
     for (const item of files) {
       const { projectId, name } = item;
-      const id = generateCustomID('TAG');
-      
+      const tagNumber = path.parse(name).name;
+
       // Create project-specific paths
-      const sourcePath = path.join(__dirname, "..", "models", projectId, name);
-      const uploadDir = path.join(__dirname, "..", "unassignedModels", projectId);
-      const destPath = path.join(uploadDir, name);
+      const modelsDir = path.join(__dirname, "..", "models", projectId);
+      const tagsDir = path.join(__dirname, "..", "tags", projectId);
+      const unassignedDir = path.join(__dirname, "..", "unassignedModels", projectId);
+      const sourcePath = path.join(modelsDir, name);
+      const destTagPath = path.join(tagsDir, name);
+      const destUnassignedPath = path.join(unassignedDir, name);
 
-      try {
-        // Create project-specific unassignedModels folder if it doesn't exist
-        await fs.mkdir(uploadDir, { recursive: true });
+      // Ensure folders exist
+      await fs.mkdir(modelsDir, { recursive: true });
+      await fs.mkdir(tagsDir, { recursive: true });
+      await fs.mkdir(unassignedDir, { recursive: true });
 
-        // Move file from models/projectId to unassignedModels/projectId
-        await fs.rename(sourcePath, destPath);
+      // Check if tag exists
+      const [existingTagRows] = await connection.execute(
+        `SELECT * FROM Tags WHERE number = ? AND projectId = ?`,
+        [tagNumber, projectId]
+      );
 
-        // Insert record into MySQL table
-        const [result] = await connection.execute(
-          `INSERT INTO UnassignedModels (number, projectId, fileName)
-           VALUES (?, ?, ?)`,
-          [id, projectId, name]
+      if (existingTagRows.length > 0) {
+        // Known tag — move to Tags folder and update filename
+        await fs.rename(sourcePath, destTagPath);
+
+        await connection.execute(
+          `UPDATE Tags SET fileName = ? WHERE number = ? AND projectId = ?`,
+          [name, tagNumber, projectId]
         );
 
-        results.push({ 
-          name, 
-          status: "moved and saved",
-          insertedId: result.insertId,
-          projectId: projectId
-        });
-      } catch (err) {
-        console.error(`Error processing file ${name}:`, err);
-        
-        // Include more detailed error information
-        const errorDetails = {
-          message: err.message,
-          code: err.code,
-          path: err.path || (err.code === 'ENOENT' ? sourcePath : undefined)
-        };
-        
-        results.push({ 
-          name, 
+        results.push({
+          name,
           projectId,
-          status: "error", 
-          error: `Failed to process file: ${err.message}`,
-          details: errorDetails
+          status: "moved to Tags and updated",
+          tagNumber,
         });
+
+      } else {
+        // Check if already exists in UnassignedModels
+        const [existingUnassignedRows] = await connection.execute(
+          `SELECT * FROM UnassignedModels WHERE fileName = ? AND projectId = ?`,
+          [name, projectId]
+        );
+
+        // Move the file (overwrite if needed)
+        await fs.rename(sourcePath, destUnassignedPath);
+
+        if (existingUnassignedRows.length > 0) {
+          // File exists, just replace it and skip DB insert
+          results.push({
+            name,
+            projectId,
+            status: "replaced in UnassignedModels",
+          });
+        } else {
+          // Insert into DB
+          const tagId = generateCustomID("TAG");
+
+          const [result] = await connection.execute(
+            `INSERT INTO UnassignedModels (number, projectId, fileName)
+             VALUES (?, ?, ?)`,
+            [tagId, projectId, name]
+          );
+
+          results.push({
+            name,
+            projectId,
+            status: "moved to UnassignedModels",
+            insertedId: result.insertId,
+          });
+        }
       }
     }
 
-    res.status(200).json({ 
+    res.status(200).json({
       status: 200,
       message: "Files processed",
-      projectId: files[0]?.projectId, // Include projectId in response
-      results 
+      projectId: files[0]?.projectId,
+      results,
     });
+
   } catch (err) {
-    console.error("Unexpected error:", err);
-    res.status(500).json({ 
+    console.error("Error in saveBulkModal:", err);
+    res.status(500).json({
       status: 500,
       message: "Server error during bulk save",
       error: err.message,
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   } finally {
     if (connection) connection.release();
   }
 };
+
 const saveChangedUnassigned = async (req, res) => {
   let connection;
+
   try {
     const { fileNamePath, projectId } = req.body;
 
@@ -290,30 +317,25 @@ const saveChangedUnassigned = async (req, res) => {
       return res.status(400).json({ error: "Project ID is required" });
     }
 
-    // Create project-specific directories
-    const uploadDir = path.join(__dirname, "..", "unassignedModels", projectId);
+    const tagsDir = path.join(__dirname, "..", "tags", projectId);
+    const unassignedDir = path.join(__dirname, "..", "unassignedModels", projectId);
     const modelsDir = path.join(__dirname, "..", "models", projectId);
-    
-    try {
-      // Create both directories if they don't exist
-      await fs.mkdir(uploadDir, { recursive: true });
-      await fs.mkdir(modelsDir, { recursive: true });
-    } catch (err) {
-      if (err.code !== 'EEXIST') { // Ignore if directories already exist
-        throw err;
-      }
-    }
+
+    await fs.mkdir(tagsDir, { recursive: true });
+    await fs.mkdir(unassignedDir, { recursive: true });
+    await fs.mkdir(modelsDir, { recursive: true });
 
     connection = await pool.getConnection();
     const results = [];
 
     for (const fileData of fileNamePath) {
       try {
-        const id = generateCustomID("TAG");
-        const destPath = path.join(uploadDir, fileData.name);
+        const tagNumber = path.parse(fileData.name).name;
+        const destTagPath = path.join(tagsDir, fileData.name);
+        const destUnassignedPath = path.join(unassignedDir, fileData.name);
         const modelFilePath = path.join(modelsDir, fileData.name);
-        
-        // Handle different data formats
+
+        // Convert file data to buffer
         let buffer;
         if (fileData.data instanceof ArrayBuffer) {
           buffer = Buffer.from(fileData.data);
@@ -325,48 +347,77 @@ const saveChangedUnassigned = async (req, res) => {
           throw new Error("Invalid file data format");
         }
 
-        // Write file to unassignedModels/projectId folder
-        await fs.writeFile(destPath, buffer);
-
-        // Insert into database
-        const [result] = await connection.execute(
-          `INSERT INTO UnassignedModels (number, projectId, fileName)
-           VALUES (?, ?, ?)`,
-          [id, projectId, fileData.name]
+        // Check if it exists in Tags
+        const [existingTagRows] = await connection.execute(
+          `SELECT * FROM Tags WHERE number = ? AND projectId = ?`,
+          [tagNumber, projectId]
         );
 
-        // Try to delete from models/projectId folder if it exists
+        if (existingTagRows.length > 0) {
+          // Save to tags folder and update filename
+          await fs.writeFile(destTagPath, buffer);
+
+          await connection.execute(
+            `UPDATE Tags SET fileName = ? WHERE number = ? AND projectId = ?`,
+            [fileData.name, tagNumber, projectId]
+          );
+
+          results.push({
+            name: fileData.name,
+            status: "saved to Tags and updated",
+            path: destTagPath,
+            tagNumber,
+          });
+
+        } else {
+          // Check if already in UnassignedModels
+          const [existingUnassignedRows] = await connection.execute(
+            `SELECT * FROM UnassignedModels WHERE fileName = ? AND projectId = ?`,
+            [fileData.name, projectId]
+          );
+
+          // Always write the file to unassignedModels (overwrite or new)
+          await fs.writeFile(destUnassignedPath, buffer);
+
+          if (existingUnassignedRows.length > 0) {
+            results.push({
+              name: fileData.name,
+              path: destUnassignedPath,
+              status: "replaced in UnassignedModels",
+            });
+          } else {
+            const newId = generateCustomID("TAG");
+
+            const [result] = await connection.execute(
+              `INSERT INTO UnassignedModels (number, projectId, fileName)
+               VALUES (?, ?, ?)`,
+              [newId, projectId, fileData.name]
+            );
+
+            results.push({
+              name: fileData.name,
+              path: destUnassignedPath,
+              status: "saved to UnassignedModels",
+              insertedId: result.insertId,
+            });
+          }
+        }
+
+        // Try to delete from models/projectId if exists
         try {
           await fs.access(modelFilePath);
           await fs.unlink(modelFilePath);
-          console.log(`Deleted file from models folder: ${modelFilePath}`);
-          results.push({
-            name: fileData.name,
-            path: destPath,
-            status: "saved",
-            insertedId: result.insertId,
-            modelFileDeleted: true
-          });
-        } catch (deleteError) {
-          if (deleteError.code === 'ENOENT') {
-            console.log(`File not found in models folder: ${modelFilePath}`);
-            results.push({
-              name: fileData.name,
-              path: destPath,
-              status: "saved",
-              insertedId: result.insertId,
-              modelFileDeleted: false
-            });
-          } else {
-            throw deleteError;
-          }
+          console.log(`Deleted from models folder: ${modelFilePath}`);
+        } catch (e) {
+          if (e.code !== "ENOENT") throw e; // Ignore if not found
         }
+
       } catch (fileError) {
         console.error(`Error processing file ${fileData?.name}:`, fileError);
         results.push({
-          name: fileData?.name || 'unknown',
+          name: fileData?.name || "unknown",
           status: "failed",
-          error: fileError.message
+          error: fileError.message,
         });
       }
     }
@@ -376,6 +427,7 @@ const saveChangedUnassigned = async (req, res) => {
       message: "File processing completed",
       files: results,
     });
+
   } catch (err) {
     console.error("Unexpected error:", err);
     res.status(500).json({
@@ -388,24 +440,24 @@ const saveChangedUnassigned = async (req, res) => {
   }
 };
 
+
 const GetUnassignedmodels = async (req, res) => {
   let connection;
   try {
-
-    const  projectId  = req.params.id;
+    const projectId = req.params.id;
 
     // Validate projectId
     if (!projectId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Project ID is required" 
+        message: "Project ID is required",
       });
     }
 
-      connection = await pool.getConnection();
+    connection = await pool.getConnection();
 
-  
-    const [results] = await connection.query(`
+    const [results] = await connection.query(
+      `
       SELECT 
         number, 
         fileName, 
@@ -414,21 +466,22 @@ const GetUnassignedmodels = async (req, res) => {
         UnassignedModels 
       WHERE 
         projectId = ?
-    `, [projectId]);
+    `,
+      [projectId]
+    );
 
     // Return the results
     return res.status(200).json({
       success: true,
       data: results,
-      message: "Unassigned models retrieved successfully"
+      message: "Unassigned models retrieved successfully",
     });
-
   } catch (error) {
     console.error("Error fetching unassigned models:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
-      error: error.message
+      error: error.message,
     });
   } finally {
     // Release the connection back to the pool if it exists
@@ -447,7 +500,9 @@ const AssignModeltags = async (req, res) => {
   const tags = req.body;
 
   if (!Array.isArray(tags) || tags.length === 0) {
-    return res.status(400).json({ error: "Request body must be a non-empty array of tags" });
+    return res
+      .status(400)
+      .json({ error: "Request body must be a non-empty array of tags" });
   }
 
   try {
@@ -456,7 +511,12 @@ const AssignModeltags = async (req, res) => {
 
     const projectId = tags[0].projectId;
     const tagsDir = path.join(__dirname, "..", "tags", projectId);
-    const unassignedDir = path.join(__dirname, "..", "unassignedModels", projectId);
+    const unassignedDir = path.join(
+      __dirname,
+      "..",
+      "unassignedModels",
+      projectId
+    );
 
     // Ensure directories exist
     await fs.mkdir(tagsDir, { recursive: true }).catch(() => {});
@@ -472,7 +532,7 @@ const AssignModeltags = async (req, res) => {
         results[results.length - 1] = {
           ...results[results.length - 1],
           status: "failed",
-          error: "Missing required fields"
+          error: "Missing required fields",
         };
         continue;
       }
@@ -498,7 +558,7 @@ const AssignModeltags = async (req, res) => {
             await fs.rename(sourcePath, destPath);
             fileOperation.moved = true;
           } catch (err) {
-            if (err.code === 'ENOENT') {
+            if (err.code === "ENOENT") {
               fileOperation.warning = `Source file not found: ${sourcePath}`;
               console.warn(fileOperation.warning);
             } else {
@@ -510,7 +570,7 @@ const AssignModeltags = async (req, res) => {
         if (existingTagWithNumber.length > 0) {
           // UPDATE existing tag (the one that already has this number)
           const existingTagId = existingTagWithNumber[0].tagId;
-          
+
           await connection.query(
             `UPDATE Tags SET
               filename = COALESCE(?, filename),
@@ -531,22 +591,26 @@ const AssignModeltags = async (req, res) => {
             "SELECT type FROM Tags WHERE tagId = ?",
             [existingTagId]
           );
-          
+
           const currentType = currentTag[0].type.toLowerCase();
           if (currentType !== typeLower) {
             // Remove from old type table
-            if (['line', 'equipment', 'valve'].includes(currentType)) {
+            if (["line", "equipment", "valve"].includes(currentType)) {
               await connection.query(
-                `DELETE FROM ${currentType.charAt(0).toUpperCase() + currentType.slice(1)}List 
+                `DELETE FROM ${
+                  currentType.charAt(0).toUpperCase() + currentType.slice(1)
+                }List 
                  WHERE tagId = ?`,
                 [existingTagId]
               );
             }
 
             // Add to new type table
-            if (['line', 'equipment', 'valve'].includes(typeLower)) {
+            if (["line", "equipment", "valve"].includes(typeLower)) {
               await connection.query(
-                `INSERT INTO ${typeLower.charAt(0).toUpperCase() + typeLower.slice(1)}List
+                `INSERT INTO ${
+                  typeLower.charAt(0).toUpperCase() + typeLower.slice(1)
+                }List
                  (projectId, tagId, tag)
                  VALUES (?, ?, ?)`,
                 [projectId, existingTagId, tagName]
@@ -567,16 +631,23 @@ const AssignModeltags = async (req, res) => {
             existingTagId, // Include the ID of the tag that was actually updated
             fileOperation,
             message: "Existing tag with same number was updated with new file",
-            unassignedRemoved: true
+            unassignedRemoved: true,
           };
-
         } else {
           // INSERT new tag (no existing tag with this number)
           await connection.query(
             `INSERT INTO Tags 
              (tagId, number, name, parenttag, type, filename, projectId)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [tagId, tagName, tagName, null, typeTrimmed, fileName || null, projectId]
+            [
+              tagId,
+              tagName,
+              tagName,
+              null,
+              typeTrimmed,
+              fileName || null,
+              projectId,
+            ]
           );
 
           await connection.query(
@@ -586,9 +657,11 @@ const AssignModeltags = async (req, res) => {
             [projectId, tagId, tagName, typeTrimmed]
           );
 
-          if (['line', 'equipment', 'valve'].includes(typeLower)) {
+          if (["line", "equipment", "valve"].includes(typeLower)) {
             await connection.query(
-              `INSERT INTO ${typeLower.charAt(0).toUpperCase() + typeLower.slice(1)}List
+              `INSERT INTO ${
+                typeLower.charAt(0).toUpperCase() + typeLower.slice(1)
+              }List
                (projectId, tagId, tag)
                VALUES (?, ?, ?)`,
               [projectId, tagId, tagName]
@@ -607,32 +680,31 @@ const AssignModeltags = async (req, res) => {
             status: "created",
             fileOperation,
             message: "New tag created",
-            unassignedRemoved: true
+            unassignedRemoved: true,
           };
         }
-
       } catch (error) {
         results[results.length - 1] = {
           ...results[results.length - 1],
           status: "failed",
           error: error.message,
-          code: error.code
+          code: error.code,
         };
         console.error(`Error processing tag ${tagId}:`, error);
       }
     }
 
-    const hasFailures = results.some(r => r.status === "failed");
+    const hasFailures = results.some((r) => r.status === "failed");
     if (hasFailures) {
       await connection.rollback();
       return res.status(207).json({
         message: "Some tags failed to process",
         results,
         stats: {
-          created: results.filter(r => r.status === "created").length,
-          updated: results.filter(r => r.status === "updated").length,
-          failed: results.filter(r => r.status === "failed").length
-        }
+          created: results.filter((r) => r.status === "created").length,
+          updated: results.filter((r) => r.status === "updated").length,
+          failed: results.filter((r) => r.status === "failed").length,
+        },
       });
     }
 
@@ -641,11 +713,10 @@ const AssignModeltags = async (req, res) => {
       message: "All tags processed successfully",
       results,
       stats: {
-        created: results.filter(r => r.status === "created").length,
-        updated: results.filter(r => r.status === "updated").length
-      }
+        created: results.filter((r) => r.status === "created").length,
+        updated: results.filter((r) => r.status === "updated").length,
+      },
     });
-
   } catch (error) {
     if (connection) await connection.rollback();
     console.error("Error in AssignModeltags:", error);
@@ -653,7 +724,7 @@ const AssignModeltags = async (req, res) => {
       error: "Internal server error",
       message: error.message,
       code: error.code,
-      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+      ...(process.env.NODE_ENV === "development" && { stack: error.stack }),
     });
   } finally {
     if (connection) connection.release();
@@ -663,10 +734,10 @@ const AssignModeltags = async (req, res) => {
 const DeleteAllUnassigned = async (req, res) => {
   const projectId = req.params.id;
   let connection;
-  
+
   try {
     connection = await pool.getConnection();
-    
+
     // First get all filenames associated with the project's unassigned models
     const [results] = await connection.query(
       "SELECT fileName FROM UnassignedModels WHERE projectId = ?",
@@ -674,20 +745,26 @@ const DeleteAllUnassigned = async (req, res) => {
     );
 
     // Delete from database
-    await connection.query(
-      "DELETE FROM UnassignedModels WHERE projectId = ?",
-      [projectId]
-    );
+    await connection.query("DELETE FROM UnassignedModels WHERE projectId = ?", [
+      projectId,
+    ]);
 
     // Delete all associated files from project-specific directory
     const deletePromises = results.map(async (item) => {
       if (item.fileName) {
-        const filePath = path.join(__dirname, "..", "unassignedModels", projectId, item.fileName);
+        const filePath = path.join(
+          __dirname,
+          "..",
+          "unassignedModels",
+          projectId,
+          item.fileName
+        );
         try {
           await fs.unlink(filePath);
           console.log(`Deleted file: ${filePath}`);
         } catch (err) {
-          if (err.code !== 'ENOENT') { // Ignore if file doesn't exist
+          if (err.code !== "ENOENT") {
+            // Ignore if file doesn't exist
             throw err;
           }
         }
@@ -698,7 +775,12 @@ const DeleteAllUnassigned = async (req, res) => {
 
     // Optionally: Remove the project directory if empty
     try {
-      const projectDir = path.join(__dirname, "..", "unassignedModels", projectId);
+      const projectDir = path.join(
+        __dirname,
+        "..",
+        "unassignedModels",
+        projectId
+      );
       const files = await fs.readdir(projectDir);
       if (files.length === 0) {
         await fs.rmdir(projectDir);
@@ -707,10 +789,14 @@ const DeleteAllUnassigned = async (req, res) => {
       // Ignore if directory doesn't exist or isn't empty
     }
 
-    res.status(200).json({ message: "All unassigned models deleted for the project" });
+    res
+      .status(200)
+      .json({ message: "All unassigned models deleted for the project" });
   } catch (error) {
     console.error("Error deleting all unassigned models:", error);
-    res.status(500).json({ error: "Internal server error", details: error.message });
+    res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
   } finally {
     if (connection) connection.release();
   }
@@ -718,10 +804,10 @@ const DeleteAllUnassigned = async (req, res) => {
 const DeleteUnassigned = async (req, res) => {
   const number = req.params.id;
   let connection;
-  
+
   try {
     connection = await pool.getConnection();
-    
+
     // First get the filename and projectId associated with the unassigned model
     const [result] = await connection.query(
       "SELECT fileName, projectId FROM UnassignedModels WHERE number = ?",
@@ -735,19 +821,25 @@ const DeleteUnassigned = async (req, res) => {
     const { fileName, projectId } = result[0];
 
     // Delete from database
-    await connection.query(
-      "DELETE FROM UnassignedModels WHERE number = ?",
-      [number]
-    );
+    await connection.query("DELETE FROM UnassignedModels WHERE number = ?", [
+      number,
+    ]);
 
     // Delete the associated file from project-specific directory
     if (fileName && projectId) {
-      const filePath = path.join(__dirname, "..", "unassignedModels", projectId, fileName);
+      const filePath = path.join(
+        __dirname,
+        "..",
+        "unassignedModels",
+        projectId,
+        fileName
+      );
       try {
         await fs.unlink(filePath);
         console.log(`Deleted file: ${filePath}`);
       } catch (err) {
-        if (err.code !== 'ENOENT') { // Ignore if file doesn't exist
+        if (err.code !== "ENOENT") {
+          // Ignore if file doesn't exist
           throw err;
         }
       }
@@ -756,11 +848,20 @@ const DeleteUnassigned = async (req, res) => {
     res.status(200).json({ message: "Unassigned model deleted successfully" });
   } catch (error) {
     console.error("Error deleting unassigned model:", error);
-    res.status(500).json({ error: "Internal server error", details: error.message });
+    res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
   } finally {
     if (connection) connection.release();
   }
 };
 
-
-module.exports = { uploadbulkModal,saveBulkModal,saveChangedUnassigned,GetUnassignedmodels,AssignModeltags,DeleteUnassigned,DeleteAllUnassigned};
+module.exports = {
+  uploadbulkModal,
+  saveBulkModal,
+  saveChangedUnassigned,
+  GetUnassignedmodels,
+  AssignModeltags,
+  DeleteUnassigned,
+  DeleteAllUnassigned,
+};

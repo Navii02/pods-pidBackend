@@ -89,16 +89,17 @@ const createTables = async () => {
       FOREIGN KEY (document_id) REFERENCES Documents(documentId) ON DELETE CASCADE
     )`);
 
-    await connection.query(`
-    CREATE TABLE IF NOT EXISTS Tags (
-        tagId VARCHAR(255) PRIMARY KEY,
-        number VARCHAR(767) NOT NULL UNIQUE, 
-        projectId VARCHAR(36),
-        name TEXT NOT NULL,
-        parenttag TEXT,
-        type TEXT NOT NULL,
-        filename TEXT
-    ) ENGINE=InnoDB;
+await connection.query(`
+CREATE TABLE IF NOT EXISTS Tags (
+    tagId VARCHAR(255) PRIMARY KEY,
+    number VARCHAR(767) NOT NULL,
+    projectId VARCHAR(36),
+    name TEXT NOT NULL,
+    parenttag TEXT,
+    type TEXT NOT NULL,
+    filename TEXT,
+    INDEX idx_number (number)  
+) ENGINE=InnoDB;
 `);
 
     await connection.query(`
@@ -174,8 +175,8 @@ const createTables = async () => {
     await connection.query(`
       CREATE TABLE IF NOT EXISTS LineList (
        projectId VARCHAR(36),
-        tagId VARCHAR(255),
-        tag VARCHAR(255) PRIMARY KEY,
+        tagId VARCHAR(255) PRIMARY KEY,
+        tag VARCHAR(255) ,
         fluidCode TEXT,
         lineId TEXT,
         medium TEXT,
@@ -213,8 +214,8 @@ const createTables = async () => {
     await connection.query(`
       CREATE TABLE IF NOT EXISTS EquipmentList (
        projectId VARCHAR(36),
-        tagId VARCHAR(255),
-        tag VARCHAR(255) PRIMARY KEY,
+        tagId VARCHAR(255) PRIMARY KEY,
+        tag VARCHAR(255) ,
         descr TEXT,
         qty VARCHAR(50),
         capacity DECIMAL(10,2),
@@ -246,8 +247,8 @@ const createTables = async () => {
       function_code VARCHAR(100) DEFAULT NULL,
       sequence_number VARCHAR(100) DEFAULT NULL,
        projectId VARCHAR(36),
-        tagId VARCHAR(255),
-        tag VARCHAR(255) PRIMARY KEY,
+        tagId VARCHAR(255) PRIMARY KEY,
+        tag VARCHAR(255) ,
       line_id VARCHAR(100) DEFAULT NULL,
       line_number VARCHAR(100) DEFAULT NULL,
       pid VARCHAR(100) DEFAULT NULL,
