@@ -9,7 +9,7 @@ const os = require("os");
 
 const generateCustomID = (prefix) => {
   const uuid = uuidv4();
-  const uniqueID = prefix + uuid.replace(/-/g, "").slice(0, 6);
+  const uniqueID = prefix + uuid.replace(/-/g, "").slice(0, 11);
   return uniqueID;
 };
 

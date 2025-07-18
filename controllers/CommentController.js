@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require("uuid");
 
 const generateCustomID = (prefix) => {
   const uuid = uuidv4();
-  const uniqueID = prefix + uuid.replace(/-/g, "").slice(0, 6);
+  const uniqueID = prefix + uuid.replace(/-/g, "").slice(0,11);
   return uniqueID;
 };
 
@@ -46,13 +46,11 @@ const getCommentStatus = async (req, res) => {
 };
 
 const addComment = async (req, res) => {
-      console.log(req.body);
-  const { statusname, color, projectId } = req.body;
-
+  const { number, statusname, color, projectId } = req.body;
+  console.log(req.body);
 
   let connection;
 
-  // Validate required fields
   if (!statusname || !color || !projectId) {
     return res.status(400).json({
       success: false,
@@ -62,28 +60,54 @@ const addComment = async (req, res) => {
 
   try {
     connection = await pool.getConnection();
-          const number = generateCustomID("CST");
 
-    // Insert new status into CommentStatus table
-    const [result] = await connection.query(
-      "INSERT INTO CommentStatus (number,statusname, color, projectId) VALUES (?, ?, ?,?)",
-      [number,statusname, color, projectId]
-    );
+    if (number) {
+      // Update existing record
+      const [updateResult] = await connection.query(
+        "UPDATE CommentStatus SET statusname = ?, color = ? WHERE number = ? AND projectId = ?",
+        [statusname, color, number, projectId]
+      );
 
-    // Fetch the inserted record to return it
-    const [newStatus] = await connection.query(
-      "SELECT number, statusname, color FROM CommentStatus WHERE number = ?",
-      [result.insertId]
-    );
+      if (updateResult.affectedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Status not found for update",
+        });
+      }
 
-    res.status(201).json({
-      success: true,
-      data: newStatus[0],
-      message: "Status added successfully",
-    });
+      const [updatedStatus] = await connection.query(
+        "SELECT number, statusname, color FROM CommentStatus WHERE number = ?",
+        [number]
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: updatedStatus[0],
+        message: "Status updated successfully",
+      });
+    } else {
+      // Insert new record
+      const newNumber = generateCustomID("CST");
+
+      const [insertResult] = await connection.query(
+        "INSERT INTO CommentStatus (number, statusname, color, projectId) VALUES (?, ?, ?, ?)",
+        [newNumber, statusname, color, projectId]
+      );
+
+      const [newStatus] = await connection.query(
+        "SELECT number, statusname, color FROM CommentStatus WHERE number = ?",
+        [newNumber]
+      );
+
+      return res.status(201).json({
+        success: true,
+        data: newStatus[0],
+        message: "Status added successfully",
+      });
+    }
   } catch (error) {
-    console.error("Error adding comment status:", error);
-    res.status(500).json({
+    console.error("Error adding/updating comment status:", error);
+    return res.status(500).json({
       success: false,
       message: "Internal server error",
       error: error.message,
@@ -92,6 +116,7 @@ const addComment = async (req, res) => {
     if (connection) connection.release();
   }
 };
+
 
 const deleteCommentStatus = async (req, res) => {
   const statusId = req.params.id;
@@ -143,12 +168,11 @@ const deleteCommentStatus = async (req, res) => {
     if (connection) connection.release();
   }
 };
-
 const saveComment = async (req, res) => {
   let connection;
   try {
     connection = await pool.getConnection();
-
+    console.log(req.body);
     const {
       docnumber,
       comment,
@@ -158,11 +182,16 @@ const saveComment = async (req, res) => {
       coordinateX,
       coordinateY,
       coordinateZ,
-      fileid,
+      posX,        
+      posY,        
+      posZ,       
+      targX,       
+      targY,      
+      targZ,       
       sourcetype,
+      fileid
     } = req.body;
-const createdby ="jpo@poulconsult"
-   
+    const createdby ="jpo@poulconsult"
 
     // Validation
     if (!docnumber || !projectId) {
@@ -172,58 +201,152 @@ const createdby ="jpo@poulconsult"
       });
     }
  const number = generateCustomID('C')
-    await connection.query(
-      `INSERT INTO CommentTable (
-        fileid,
-        docNumber,
+    const query = `
+      INSERT INTO CommentTable (
         number,
-        projectId,
-        sourcetype,
+        docNumber,
         comment,
         status,
         priority,
-        createdby,
+        projectId,
         coOrdinateX,
         coOrdinateY,
-        coOrdinateZ
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        fileid || null,
-        docnumber,
-        number,
-        projectId,
-        sourcetype || null,
-        comment || null,
-        status || "open",
-        priority || null,
-        createdby || null,
-        coordinateX || null,
-        coordinateY || null,
-        coordinateZ || null
-      ]
-    );
+        coOrdinateZ,
+        posX,
+        posY,
+        posZ,
+        targX,
+        targY,
+        targZ,
+        createdby,
+        sourcetype,
+        fileid,
+        createddate
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    `;
 
-    res.status(200).json({
-      success: true,
-      message: "Comment saved successfully",
-      data: {
-        number,
-        docNumber: docnumber,
-        projectId,
-        status: status || "open"
-      }
-    });
+    const values = [
+      number,
+      docnumber || null,
+      comment || null,
+      status || "open",
+      priority || null,
+      projectId,
+      coordinateX || null,
+      coordinateY || null,
+      coordinateZ || null,
+      posX || null,        
+      posY || null,        
+      posZ || null,        
+      targX || null,        
+      targY || null,       
+      targZ || null,       
+      createdby || null,
+      sourcetype || null,
+      fileid || null
+    ];
+
+    const [result] = await connection.query(query, values);
+
+
+return res.status(200).json({
+  success: true,
+  commentId: number,
+  message: "Comment saved successfully"
+});
+
   } catch (error) {
     console.error("Error saving comment:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+  return res.status(500).json({
+  success: false,
+  message: "Error saving comment",
+  error: error.message
+});
+
   } finally {
     if (connection) connection.release();
   }
 };
+// const saveComment = async (req, res) => {
+//   let connection;
+//   try {
+//     connection = await pool.getConnection();
+
+//     const {
+//       docnumber,
+//       comment,
+//       status,
+//       priority,
+//       projectId,
+//       coordinateX,
+//       coordinateY,
+//       coordinateZ,
+//       fileid,
+//       sourcetype,
+//     } = req.body;
+// const createdby ="jpo@poulconsult"
+   
+
+//     // Validation
+//     if (!docnumber || !projectId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Document number and project ID are required",
+//       });
+//     }
+//  const number = generateCustomID('C')
+//     await connection.query(
+//       `INSERT INTO CommentTable (
+//         fileid,
+//         docNumber,
+//         number,
+//         projectId,
+//         sourcetype,
+//         comment,
+//         status,
+//         priority,
+//         createdby,
+//         coOrdinateX,
+//         coOrdinateY,
+//         coOrdinateZ
+//       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+//       [
+//         fileid || null,
+//         docnumber,
+//         number,
+//         projectId,
+//         sourcetype || null,
+//         comment || null,
+//         status || "open",
+//         priority || null,
+//         createdby || null,
+//         coordinateX || null,
+//         coordinateY || null,
+//         coordinateZ || null
+//       ]
+//     );
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Comment saved successfully",
+//       data: {
+//         number,
+//         docNumber: docnumber,
+//         projectId,
+//         status: status || "open"
+//       }
+//     });
+//   } catch (error) {
+//     console.error("Error saving comment:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//       error: error.message,
+//     });
+//   } finally {
+//     if (connection) connection.release();
+//   }
+// };
 const getAllComments = async (req, res) => {
   let connection;
   try {

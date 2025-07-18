@@ -54,6 +54,9 @@ const {
   ClearEditableValveFields,
   ClearEditableLineFields,
   ClearEditableEquipmentFields,
+  saveimportedLineList,
+  saveimportedEquipmentList,
+  saveimportedValveList,
 } = require("../controllers/TagController");
 const {
   AddArea,
@@ -131,7 +134,7 @@ router.post("/addtag", AddTag);
  router.post("/save-updated-tagfile",SaveUpdatedTagFile)
 router.get("/get-alltags/:id", getTags);
 router.delete("/delete-tag/:id", deleteTag);
-router.put("/update-tag/:id", updateTag);
+router.put("/update-tag/:id/:projectId", updateTag);
 router.get(
   "/get-mesh-tag-by-project/:projectId/:filename",
   getTagByProjectAndFilename
@@ -141,6 +144,10 @@ router.get("/getline/:id", GetLineList);
 router.put("/edit-line-list", EditLineList);
 router.put("/delete-line-list", ClearEditableLineFields);
 router.get("/getline-details/:id/:tagId", GetLineListUsingTagId);
+router.post("/import-line-list",saveimportedLineList);
+router.post("/import-equipment-list",saveimportedEquipmentList);
+router.post("/import-valve-list",saveimportedValveList);
+
 
 router.get("/getequipment/:id", GetequipmentList);
 router.put("/edit-equipment-list", EditEquipmentList);

@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require("uuid");
 
 const generateCustomID = (prefix) => {
   const uuid = uuidv4();
-  const uniqueID = prefix + uuid.replace(/-/g, "").slice(0, 6);
+  const uniqueID = prefix + uuid.replace(/-/g, "").slice(0, 11);
   return uniqueID;
 };
 const AddArea = async (req, res) => {
