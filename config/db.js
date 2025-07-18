@@ -65,7 +65,7 @@ const createTables = async () => {
         projectName VARCHAR(255) NOT NULL,
         projectDescription TEXT,
         projectPath TEXT
-      )
+      )ENGINE=InnoDB;
     `);
 
     await connection.query(`CREATE TABLE IF NOT EXISTS Documents (
@@ -78,7 +78,7 @@ const createTables = async () => {
       projectId VARCHAR(36),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY(documentId)
-    )`);
+    )ENGINE=InnoDB;`);
 
     await connection.query(`CREATE TABLE IF NOT EXISTS spidelements (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -87,7 +87,7 @@ const createTables = async () => {
       item_json JSON NOT NULL,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (document_id) REFERENCES Documents(documentId) ON DELETE CASCADE
-    )`);
+    )ENGINE=InnoDB;`);
 
 await connection.query(`
 CREATE TABLE IF NOT EXISTS Tags (
@@ -455,6 +455,84 @@ await connection.query(`
   ) ENGINE=InnoDB;
 `);
 
+await connection.query(`
+CREATE TABLE IF NOT EXISTS user_features (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  projectId VARCHAR(255),
+  userId VARCHAR(255) NOT NULL,
+  feature VARCHAR(255) NOT NULL,
+  role VARCHAR(255) NOT NULL,
+  UNIQUE KEY unique_user_feature (userid, feature)
+)ENGINE=InnoDB;`)
+
+const initializeProjectFeatures = async () => {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    // Create the table
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS projectFeatures (
+        feature_id INT AUTO_INCREMENT PRIMARY KEY,
+        feature_name VARCHAR(255) UNIQUE,
+        description TEXT
+      ) ENGINE=InnoDB;
+    `);
+
+    // Insert initial features
+    const initialFeatures = [
+      { name: 'linelist', description: 'Access to Line List functionality' },
+      { name: 'eqplist', description: 'Access to Equipment List functionality' },
+      { name: 'taglist', description: 'Access to Tag List functionality' },
+      { name: 'comment_table', description: 'Access to Comment Table functionality' },
+      { name: 'comment_status', description: 'Access to Comment Status functionality' },
+      { name: 'bulk_model', description: 'Access to Bulk Model functionality' },
+      { name: 'unassigned_model', description: 'Access to Unassigned Models functionality' },
+      { name: 'tag_info', description: 'Access to Tag Info functionality' },
+      { name: 'spid', description: 'Access to SPID functionality' },
+      { name: 'global_model', description: 'Access to Global Model functionality' }
+    ];
+
+    for (const feature of initialFeatures) {
+      await connection.query(`
+        INSERT IGNORE INTO projectFeatures (feature_name, description)
+        VALUES (?, ?)
+      `, [feature.name, feature.description]);
+    }
+
+    await connection.commit();
+    console.log('Project features table initialized successfully');
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error('Error initializing project features:', error);
+    throw error;
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+// Call this function during your application startup
+initializeProjectFeatures().catch(console.error);
+
+
+  await connection.query(`CREATE TABLE IF NOT EXISTS Users (
+      userId VARCHAR(36) NOT NULL,
+      username VARCHAR(100) NOT NULL UNIQUE,
+      email VARCHAR(255) NOT NULL UNIQUE,
+      token TEXT,
+      refreshToken TEXT,
+      role VARCHAR(50) NOT NULL DEFAULT 'user',
+      lastLogin TIMESTAMP NULL,
+      lastLogout TIMESTAMP NULL,
+      loginCount INT DEFAULT 0,
+      isActive BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY(userId),
+      INDEX idx_email (email),
+      INDEX idx_username (username)
+    )ENGINE=InnoDB;`);
 
     console.log(`All tables ensured.`);
   } catch (error) {

@@ -110,6 +110,7 @@ const fs = require('fs').promises;
 
 const { GetModal, getGroundSettings, getWaterSettings, getBasesettings, updateWaterSettings, updateGroundSettings, updateBaseSettings } = require("../controllers/Iroamer");
 const { SaveOriginalMesh, saveMergedMesh, DeleteGlobalModal,  getGlobalModalData, finalizeOctree, handleChunkUpload, getProjectMetadata, getOctreeMetadata, getMeshDataChunk } = require("../controllers/GlobalModelcontroller");
+const { AssignUserFeatures, getAllFeatures, getUserFeaturesWithProjectNames } = require("../controllers/userController");
 const router = express.Router();
 
 router.post("/createproject", CreateProject);
@@ -256,6 +257,15 @@ router.put("/update-saved-view",updateSavedView);
 router.post('/octree/chunk', upload.single('chunkData'), handleChunkUpload);
       router.post('/octree/finalize',finalizeOctree)
 router.post("/save-merged-mesh", upload.single("file"), saveMergedMesh);
+
+
+
+
+//User-Related
+
+router.post('/admin/assign-feature',AssignUserFeatures)
+router.get('/admin/get-features',getAllFeatures)
+router.get('/admin/get-user-features',getUserFeaturesWithProjectNames)
 
 
 
