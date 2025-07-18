@@ -6,7 +6,7 @@ const path = require("path");
 
 const generateCustomID = (prefix) => {
   const uuid = uuidv4();
-  const uniqueID = prefix + uuid.replace(/-/g, "").slice(0, 6);
+  const uniqueID = prefix + uuid.replace(/-/g, "").slice(0, 11);
   return uniqueID;
 };
 
@@ -350,9 +350,11 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
+
 const updateTag = async (req, res) => {
-  const { id } = req.params;
+  const { id, projectId } = req.params;
   const tagId = id;
+  const project_Id = projectId;
   console.log(req.body);
 
   const { number, name, type, parentTag, filename } = req.body;
@@ -371,8 +373,8 @@ const updateTag = async (req, res) => {
 
     // Get the current tag values before updating
     const [existingTag] = await connection.query(
-      "SELECT * FROM Tags WHERE tagId = ?",
-      [tagId]
+      "SELECT * FROM Tags WHERE tagId = ? AND projectId = ?",
+      [tagId, project_Id]
     );
 
     if (existingTag.length === 0) {
@@ -383,40 +385,112 @@ const updateTag = async (req, res) => {
       });
     }
 
+    const oldType = existingTag[0].type;
+    const newType = type.toLowerCase();
+    const oldTypeLower = oldType?.toLowerCase();
+
     // Update the Tags table
     await connection.query(
       `UPDATE Tags 
        SET number = ?, name = ?, type = ?, parentTag = ?, filename = ?
-       WHERE tagId = ?`,
-      [number, name, type, parentTag, filename || null, tagId]
+       WHERE tagId = ? AND projectId = ?`,
+      [number, name, type, parentTag, filename || null, tagId, project_Id]
+    );
+
+    // Update the TagInfo table
+    await connection.query(
+      `UPDATE TagInfo 
+       SET tag = ?, type = ?
+       WHERE tagId = ? AND projectId = ?`,
+      [name, type, tagId, project_Id]
     );
 
     // Update the Tree table - both tag (number) and name
     await connection.query(
       `UPDATE Tree 
        SET tag = ?, name = ?
-       WHERE tag = ?`,
-      [number, name, existingTag[0].number] // Update rows that had the old number
+       WHERE tag = ? AND project_id = ?`,
+      [number, name, existingTag[0].number, project_Id]
     );
+
+    // Handle type changes - move between type-specific tables
+    if (oldTypeLower !== newType) {
+      console.log(`Type changed from ${oldTypeLower} to ${newType}`);
+      
+      // Remove from old type-specific table
+      if (oldTypeLower === 'line') {
+        await connection.query("DELETE FROM LineList WHERE tagId = ? AND projectId = ?", [tagId, project_Id]);
+      } else if (oldTypeLower === 'equipment') {
+        await connection.query("DELETE FROM EquipmentList WHERE tagId = ? AND projectId = ?", [tagId, project_Id]);
+      } else if (oldTypeLower === 'valve') {
+        await connection.query("DELETE FROM ValveList WHERE tagId = ? AND projectId = ?", [tagId, project_Id]);
+      }
+
+      // Add to new type-specific table
+      if (newType === 'line') {
+        await connection.query(
+          `INSERT INTO LineList (projectId, tagId, tag) 
+           VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE tag = VALUES(tag)`,
+          [project_Id, tagId, name]
+        );
+      } else if (newType === 'equipment') {
+        await connection.query(
+          `INSERT INTO EquipmentList (projectId, tagId, tag) 
+           VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE tag = VALUES(tag)`,
+          [project_Id, tagId, name]
+        );
+      } else if (newType === 'valve') {
+        await connection.query(
+          `INSERT INTO ValveList (projectId, tagId, tag) 
+           VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE tag = VALUES(tag)`,
+          [project_Id, tagId, name]
+        );
+      }
+    } else {
+      // If type didn't change, just update the tag name in the existing type-specific table
+      if (newType === 'line') {
+        await connection.query(
+          `UPDATE LineList SET tag = ? WHERE tagId = ? AND projectId = ?`,
+          [name, tagId, project_Id]
+        );
+      } else if (newType === 'equipment') {
+        await connection.query(
+          `UPDATE EquipmentList SET tag = ? WHERE tagId = ? AND projectId = ?`,
+          [name, tagId, project_Id]
+        );
+      } else if (newType === 'valve') {
+        await connection.query(
+          `UPDATE ValveList SET tag = ? WHERE tagId = ? AND projectId = ?`,
+          [name, tagId, project_Id]
+        );
+      }
+    }
 
     await connection.commit(); // Commit the transaction
 
     const [updatedTag] = await connection.query(
-      "SELECT * FROM Tags WHERE tagId = ?",
-      [tagId]
+      "SELECT * FROM Tags WHERE tagId = ? AND projectId = ?",
+      [tagId, project_Id]
     );
 
     res.status(200).json({
       success: true,
       message: "Tag updated successfully",
       data: updatedTag[0],
+      typeChanged: oldTypeLower !== newType,
+      oldType: oldTypeLower,
+      newType: newType
     });
   } catch (error) {
-    await connection.rollback();
+    if (connection) await connection.rollback();
     console.error("Error updating tag:", error);
     res.status(500).json({
       success: false,
       message: "Failed to update tag",
+      error: error.message
     });
   } finally {
     if (connection) connection.release();
@@ -1702,6 +1776,599 @@ const ClearTagInfoFields = async (req, res) => {
   }
 };
 
+// Backend function to handle import with upsert logic
+const saveimportedLineList = async (req, res) => {
+  let connection;
+  try {
+    const importData = req.body; // Array of line objects
+    
+    if (!Array.isArray(importData) || importData.length === 0) {
+      return res.status(400).json({ error: "Import data must be a non-empty array" });
+    }
+
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    const results = {
+      updated: 0,
+      created: 0,
+      errors: []
+    };
+
+    for (const lineData of importData) {
+      try {
+        const { tag, projectId } = lineData;
+        
+        if (!tag || !projectId) {
+          results.errors.push(`Missing tag or projectId for record: ${JSON.stringify(lineData)}`);
+          continue;
+        }
+
+        // Check if tag exists in LineList for this project
+        const [existingLine] = await connection.query(
+          `SELECT tagId FROM LineList WHERE tag = ? AND projectId = ?`,
+          [tag, projectId]
+        );
+
+        if (existingLine.length > 0) {
+          // UPDATE existing record
+          await updateExistingLine(connection, lineData, existingLine[0].tagId);
+          results.updated++;
+        } else {
+          // CREATE new tag and line record
+          await createNewLineTag(connection, lineData);
+          results.created++;
+        }
+      } catch (itemError) {
+        results.errors.push(`Error processing ${lineData.tag}: ${itemError.message}`);
+      }
+    }
+
+    await connection.commit();
+    
+    res.status(200).json({
+      success: true,
+      message: "Import completed",
+      results
+    });
+
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error("Error importing LineList:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+// Helper function to update existing line
+const updateExistingLine = async (connection, lineData, tagId) => {
+  const updateQuery = `
+    UPDATE LineList SET 
+      fluidCode = ?,
+      lineId = ?,
+      medium = ?,
+      lineSizeIn = ?,
+      lineSizeNb = ?,
+      pipingSpec = ?,
+      insType = ?,
+      insThickness = ?,
+      heatTrace = ?,
+      lineFrom = ?,
+      lineTo = ?,
+      maxOpPress = ?,
+      maxOpTemp = ?,
+      dsgnPress = ?,
+      minDsgnTemp = ?,
+      maxDsgnTemp = ?,
+      testPress = ?,
+      testMedium = ?,
+      testMediumPhase = ?,
+      massFlow = ?,
+      volFlow = ?,
+      density = ?,
+      velocity = ?,
+      paintSystem = ?,
+      ndtGroup = ?,
+      chemCleaning = ?,
+      pwht = ?
+    WHERE tagId = ? AND projectId = ?
+  `;
+
+  await connection.query(updateQuery, [
+    lineData.fluidCode || null,
+    lineData.lineId || null,
+    lineData.medium || null,
+    lineData.lineSizeIn || null,
+    lineData.lineSizeNb || null,
+    lineData.pipingSpec || null,
+    lineData.insType || null,
+    lineData.insThickness || null,
+    lineData.heatTrace || null,
+    lineData.lineFrom || null,
+    lineData.lineTo || null,
+    lineData.maxOpPress || null,
+    lineData.maxOpTemp || null,
+    lineData.dsgnPress || null,
+    lineData.minDsgnTemp || null,
+    lineData.maxDsgnTemp || null,
+    lineData.testPress || null,
+    lineData.testMedium || null,
+    lineData.testMediumPhase || null,
+    lineData.massFlow || null,
+    lineData.volFlow || null,
+    lineData.density || null,
+    lineData.velocity || null,
+    lineData.paintSystem || null,
+    lineData.ndtGroup || null,
+    lineData.chemCleaning || null,
+    lineData.pwht || null,
+    tagId,
+    lineData.projectId
+  ]);
+};
+
+// Helper function to create new tag and line
+const createNewLineTag = async (connection, lineData) => {
+  const tagId = generateCustomID("TAG-");
+  
+  // Insert into Tags table
+  await connection.query(
+    `INSERT INTO Tags (tagId, number, name, parenttag, type, filename, projectId)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [tagId, lineData.tag, lineData.tag, null, 'line', null, lineData.projectId]
+  );
+
+  // Insert into TagInfo table
+  await connection.query(
+    `INSERT INTO TagInfo (projectId, tagId, tag, type)
+     VALUES (?, ?, ?, ?)`,
+    [lineData.projectId, tagId, lineData.tag, 'line']
+  );
+
+  // Insert into LineList table with all data
+  await connection.query(
+    `INSERT INTO LineList (
+      projectId, tagId, tag, fluidCode, lineId, medium, lineSizeIn, lineSizeNb,
+      pipingSpec, insType, insThickness, heatTrace, lineFrom, lineTo,
+      maxOpPress, maxOpTemp, dsgnPress, minDsgnTemp, maxDsgnTemp,
+      testPress, testMedium, testMediumPhase, massFlow, volFlow,
+      density, velocity, paintSystem, ndtGroup, chemCleaning, pwht
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      lineData.projectId,
+      tagId,
+      lineData.tag,
+      lineData.fluidCode || null,
+      lineData.lineId || null,
+      lineData.medium || null,
+      lineData.lineSizeIn || null,
+      lineData.lineSizeNb || null,
+      lineData.pipingSpec || null,
+      lineData.insType || null,
+      lineData.insThickness || null,
+      lineData.heatTrace || null,
+      lineData.lineFrom || null,
+      lineData.lineTo || null,
+      lineData.maxOpPress || null,
+      lineData.maxOpTemp || null,
+      lineData.dsgnPress || null,
+      lineData.minDsgnTemp || null,
+      lineData.maxDsgnTemp || null,
+      lineData.testPress || null,
+      lineData.testMedium || null,
+      lineData.testMediumPhase || null,
+      lineData.massFlow || null,
+      lineData.volFlow || null,
+      lineData.density || null,
+      lineData.velocity || null,
+      lineData.paintSystem || null,
+      lineData.ndtGroup || null,
+      lineData.chemCleaning || null,
+      lineData.pwht || null
+    ]
+  );
+};
+const saveimportedEquipmentList = async (req, res) => {
+  let connection;
+  try {
+    const importData = req.body; // Array of equipment objects
+    
+    if (!Array.isArray(importData) || importData.length === 0) {
+      return res.status(400).json({ error: "Import data must be a non-empty array" });
+    }
+
+    // Get projectId from the first item or from request params
+    const projectId = importData[0]?.projectId || req.params.projectId;
+    if (!projectId) {
+      return res.status(400).json({ error: "Project ID is required" });
+    }
+
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    const results = {
+      updated: 0,
+      created: 0,
+      errors: []
+    };
+
+    for (const equipmentData of importData) {
+      try {
+        
+       const { tag, projectId } = equipmentData;
+        
+        if (!tag || !projectId) {
+          results.errors.push(`Missing tag or projectId for record: ${JSON.stringify(lineData)}`);
+          continue;
+        }
+
+
+        // Check if equipment tag exists in EquipmentList for this project
+        const [existingEquipment] = await connection.query(
+          `SELECT tagId FROM EquipmentList WHERE tag = ? AND projectId = ?`,
+          [tag, projectId]
+        );
+
+        if (existingEquipment.length > 0) {
+          // UPDATE existing record
+          await updateExistingEquipment(connection, equipmentData, existingEquipment[0].tagId, projectId);
+          results.updated++;
+        } else {
+          console.log("enter")
+          // CREATE new tag and equipment record
+         const Dataresult= await createNewEquipmentTag(connection, equipmentData, projectId);
+         console.log(Dataresult)
+          results.created++;
+        }
+      } catch (itemError) {
+        results.errors.push(`Error processing ${equipmentData.tag}: ${itemError.message}`);
+      }
+    }
+
+    await connection.commit();
+    
+    res.status(200).json({
+      success: true,
+      message: "Equipment import completed",
+      results
+    });
+
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error("Error importing EquipmentList:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+// Helper function to update existing equipment
+const updateExistingEquipment = async (connection, equipmentData, tagId, projectId) => {
+  const updateQuery = `
+    UPDATE EquipmentList SET 
+      descr = ?,
+      qty = ?,
+      capacity = ?,
+      type = ?,
+      materials = ?,
+      capacityDuty = ?,
+      dims = ?,
+      dsgnPress = ?,
+      opPress = ?,
+      dsgnTemp = ?,
+      opTemp = ?,
+      dryWeight = ?,
+      opWeight = ?,
+      supplier = ?,
+      remarks = ?,
+      initStatus = ?,
+      revision = ?,
+      revisionDate = ?
+    WHERE tagId = ? AND projectId = ?
+  `;
+
+  await connection.query(updateQuery, [
+    equipmentData.descr || null,
+    equipmentData.qty || null,
+    equipmentData.capacity || null,
+    equipmentData.type || null,
+    equipmentData.materials || null,
+    equipmentData.capacityDuty || null,
+    equipmentData.dims || null,
+    equipmentData.dsgnPress || null,
+    equipmentData.opPress || null,
+    equipmentData.dsgnTemp || null,
+    equipmentData.opTemp || null,
+    equipmentData.dryWeight || null,
+    equipmentData.opWeight || null,
+    equipmentData.supplier || null,
+    equipmentData.remarks || null,
+    equipmentData.initStatus || null,
+    equipmentData.revision || null,
+    equipmentData.revisionDate || null,
+    tagId,
+    projectId
+  ]);
+};
+
+// Helper function to create new equipment tag
+const createNewEquipmentTag = async (connection, equipmentData, projectId) => {
+  const tagId = generateCustomID("TAG-");
+  
+  // Insert into Tags table
+  await connection.query(
+    `INSERT INTO Tags (tagId, number, name, parenttag, type, filename, projectId)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [tagId, equipmentData.tag, equipmentData.tag, null, 'equipment', null, projectId]
+  );
+
+  // Insert into TagInfo table
+  await connection.query(
+    `INSERT INTO TagInfo (projectId, tagId, tag, type)
+     VALUES (?, ?, ?, ?)`,
+    [projectId, tagId, equipmentData.tag, 'equipment']
+  );
+
+  // Insert into EquipmentList table with all data
+  await connection.query(
+    `INSERT INTO EquipmentList (
+      projectId, tagId, tag, descr, qty, capacity, type, materials, capacityDuty,
+      dims, dsgnPress, opPress, dsgnTemp, opTemp, dryWeight, opWeight,
+      supplier, remarks, initStatus, revision, revisionDate
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      projectId,
+      tagId,
+      equipmentData.tag,
+      equipmentData.descr || null,
+      equipmentData.qty || null,
+      equipmentData.capacity || null,
+      equipmentData.type || null,
+      equipmentData.materials || null,
+      equipmentData.capacityDuty || null,
+      equipmentData.dims || null,
+      equipmentData.dsgnPress || null,
+      equipmentData.opPress || null,
+      equipmentData.dsgnTemp || null,
+      equipmentData.opTemp || null,
+      equipmentData.dryWeight || null,
+      equipmentData.opWeight || null,
+      equipmentData.supplier || null,
+      equipmentData.remarks || null,
+      equipmentData.initStatus || null,
+      equipmentData.revision || null,
+      equipmentData.revisionDate || null
+    ]
+  );
+};
+
+const saveimportedValveList = async (req, res) => {
+  let connection;
+  try {
+    const importData = req.body; // Array of valve objects
+    console.log("📥 Valve import data received:", importData.length, "items");
+    
+    if (!Array.isArray(importData) || importData.length === 0) {
+      return res.status(400).json({ error: "Import data must be a non-empty array" });
+    }
+
+    // Get projectId from the first item or from request params
+    const projectId = importData[0]?.projectId || req.params.projectId;
+    console.log("🔍 Project ID:", projectId);
+    
+    if (!projectId) {
+      return res.status(400).json({ error: "Project ID is required" });
+    }
+
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    const results = {
+      updated: 0,
+      created: 0,
+      errors: []
+    };
+
+    for (const valveData of importData) {
+      try {
+        const { tag ,projectId} = valveData;
+        console.log(`🏷️ Processing valve tag: ${tag}`);
+        
+        if (!tag || !projectId ) {
+          const errorMsg = `Missing or empty tag for record: ${JSON.stringify(valveData)}`;
+          console.log("❌", errorMsg);
+          results.errors.push(errorMsg);
+          continue;
+        }
+
+        // Check if valve tag exists in ValveList for this project
+        const [existingValve] = await connection.query(
+          `SELECT tagId FROM valveList WHERE tag = ? AND projectId = ?`,
+          [tag, projectId]
+        );
+
+        if (existingValve.length > 0) {
+          // UPDATE existing record
+          await updateExistingValve(connection, valveData, existingValve[0].tagId, projectId);
+          results.updated++;
+        } else {
+          // CREATE new tag and valve record
+          await createNewValveTag(connection, valveData, projectId);
+          results.created++;
+        }
+      } catch (itemError) {
+        const errorMsg = `Error processing ${valveData.tag}: ${itemError.message}`;
+        console.error("❌", errorMsg);
+        console.error("Full error:", itemError);
+        results.errors.push(errorMsg);
+      }
+    }
+
+    await connection.commit();
+    console.log("📊 Final valve import results:", results);
+    
+    res.status(200).json({
+      success: true,
+      message: "Valve import completed",
+      results
+    });
+
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error("❌ Error importing ValveList:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+// Helper function to update existing valve
+const updateExistingValve = async (connection, valveData, tagId, projectId) => {
+  console.log(`🔧 Updating existing valve: ${valveData.tag} (tagId: ${tagId})`);
+  
+  const updateQuery = `
+    UPDATE valveList SET 
+      area = ?,
+      discipline = ?,
+      Systm = ?,
+      function_code = ?,
+      sequence_number = ?,
+      line_id = ?,
+      line_number = ?,
+      pid = ?,
+      isometric = ?,
+      data_sheet = ?,
+      drawings = ?,
+      design_pressure = ?,
+      design_temperature = ?,
+      size = ?,
+      paint_system = ?,
+      purchase_order = ?,
+      supplier = ?,
+      information_status = ?,
+      equipment_status = ?,
+      comment = ?
+    WHERE tagId = ? AND projectId = ?
+  `;
+
+  try {
+    const [result] = await connection.query(updateQuery, [
+      valveData.area || null,
+      valveData.discipline || null,
+      valveData.system || valveData.Systm || null, // Handle both field names
+      valveData.function_code || null,
+      valveData.sequence_number || null,
+      valveData.line_id || null,
+      valveData.line_number || null,
+      valveData.pid || null,
+      valveData.isometric || null,
+      valveData.data_sheet || null,
+      valveData.drawings || null,
+      valveData.design_pressure || null,
+      valveData.design_temperature || null,
+      valveData.size || null,
+      valveData.paint_system || null,
+      valveData.purchase_order || null,
+      valveData.supplier || null,
+      valveData.information_status || null,
+      valveData.equipment_status || null,
+      valveData.comment || null,
+      tagId,
+      projectId
+    ]);
+    
+    console.log(`✅ Valve update successful, affected rows: ${result.affectedRows}`);
+    
+    if (result.affectedRows === 0) {
+      throw new Error(`No rows updated for valve ${valveData.tag}`);
+    }
+    
+  } catch (updateError) {
+    console.error("❌ Error during valve update:", updateError);
+    throw updateError;
+  }
+};
+
+// Helper function to create new valve tag
+const createNewValveTag = async (connection, valveData, projectId) => {
+  console.log("🔧 Creating new valve tag for:", valveData.tag);
+  
+  const tagId = generateCustomID("TAG-");
+  console.log("🆔 Generated tagId:", tagId);
+  
+  try {
+    // Insert into Tags table
+    console.log("📝 Inserting into Tags table...");
+    await connection.query(
+      `INSERT INTO Tags (tagId, number, name, parenttag, type, filename, projectId)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [tagId, valveData.tag, valveData.tag, null, 'valve', null, projectId]
+    );
+    console.log("✅ Tags table insert successful");
+
+    // Insert into TagInfo table
+    console.log("📝 Inserting into TagInfo table...");
+    await connection.query(
+      `INSERT INTO TagInfo (projectId, tagId, tag, type)
+       VALUES (?, ?, ?, ?)`,
+      [projectId, tagId, valveData.tag, 'valve']
+    );
+    console.log("✅ TagInfo table insert successful");
+
+    // Insert into valveList table with all data
+    console.log("📝 Inserting into valveList table...");
+    await connection.query(
+      `INSERT INTO valveList (
+        projectId, tagId, tag, area, discipline, Systm, function_code, sequence_number,
+        line_id, line_number, pid, isometric, data_sheet, drawings,
+        design_pressure, design_temperature, size, paint_system, purchase_order,
+        supplier, information_status, equipment_status, comment
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        projectId,
+        tagId,
+        valveData.tag,
+        valveData.area || null,
+        valveData.discipline || null,
+        valveData.system || valveData.Systm || null, // Handle both field names
+        valveData.function_code || null,
+        valveData.sequence_number || null,
+        valveData.line_id || null,
+        valveData.line_number || null,
+        valveData.pid || null,
+        valveData.isometric || null,
+        valveData.data_sheet || null,
+        valveData.drawings || null,
+        valveData.design_pressure || null,
+        valveData.design_temperature || null,
+        valveData.size || null,
+        valveData.paint_system || null,
+        valveData.purchase_order || null,
+        valveData.supplier || null,
+        valveData.information_status || null,
+        valveData.equipment_status || null,
+        valveData.comment || null
+      ]
+    );
+    console.log("✅ ValveList table insert successful");
+    
+  } catch (insertError) {
+    console.error("❌ Error during valve creation:", insertError);
+    throw insertError;
+  }
+};
+
+
 module.exports = {
   AddTag,
   getTags,
@@ -1729,5 +2396,8 @@ module.exports = {
   SaveUpdatedTagFile,
   ClearEditableValveFields,
   ClearEditableLineFields,
-  ClearEditableEquipmentFields
+  ClearEditableEquipmentFields,
+  saveimportedLineList,
+  saveimportedEquipmentList,
+  saveimportedValveList
 };

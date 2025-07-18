@@ -158,7 +158,7 @@ CREATE TABLE IF NOT EXISTS Tags (
         taginfo48 TEXT,
         taginfo49 TEXT,
         taginfo50 TEXT,
-            FOREIGN KEY (tagId) REFERENCES Tags(tagId) ON DELETE CASCADE
+            FOREIGN KEY (tagId) REFERENCES Tags(tagId) ON DELETE CASCADE 
       ) ENGINE=InnoDB;
     `);
 
@@ -346,7 +346,7 @@ CREATE TABLE IF NOT EXISTS Tags (
   ) ENGINE=InnoDB;
 `);
 
-    await connection.query(`
+await connection.query(`
   CREATE TABLE IF NOT EXISTS CommentTable (
     fileid VARCHAR(100),
     docNumber VARCHAR(100),
@@ -358,9 +358,15 @@ CREATE TABLE IF NOT EXISTS Tags (
     priority VARCHAR(50),
     createdby VARCHAR(100),
     createddate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    coOrdinateX REAL,
-    coOrdinateY REAL,
-    coOrdinateZ REAL,
+    coOrdinateX DOUBLE,
+    coOrdinateY DOUBLE,
+    coOrdinateZ DOUBLE,
+    posX DOUBLE,
+    posY DOUBLE,
+    posZ DOUBLE,
+    targX DOUBLE,
+    targY DOUBLE,
+    targZ DOUBLE,
     closedBy VARCHAR(100),
     closedDate TIMESTAMP,
     INDEX (fileid),
