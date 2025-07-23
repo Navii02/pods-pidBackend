@@ -10,6 +10,7 @@ const {
   AllSavedViews,
   deleteSavedView,
   updateSavedView,
+  getProjectDetails,
 } = require("../controllers/commonControllers");
 const documentupload = require("../multer/documentmulter");
 const convertedFilesUpload = require("../multer/Modalmulter");
@@ -113,7 +114,7 @@ const fs = require('fs').promises;
 
 const { GetModal, getGroundSettings, getWaterSettings, getBasesettings, updateWaterSettings, updateGroundSettings, updateBaseSettings } = require("../controllers/Iroamer");
 const { SaveOriginalMesh, saveMergedMesh, DeleteGlobalModal,  getGlobalModalData, finalizeOctree, handleChunkUpload, getProjectMetadata, getOctreeMetadata, getMeshDataChunk } = require("../controllers/GlobalModelcontroller");
-const { AssignUserFeatures, getAllFeatures, getUserFeaturesWithProjectNames } = require("../controllers/userController");
+const { AssignUserFeatures, getAllFeatures, getUserFeaturesWithProjectNames, Adduser, GetAllUsers, asignprojectAdmin, GetAllUserFeatures, getUsers } = require("../controllers/userController");
 const router = express.Router();
 
 router.post("/createproject", CreateProject);
@@ -273,6 +274,15 @@ router.post("/save-merged-mesh", upload.single("file"), saveMergedMesh);
 router.post('/admin/assign-feature',AssignUserFeatures)
 router.get('/admin/get-features',getAllFeatures)
 router.get('/admin/get-user-features',getUserFeaturesWithProjectNames)
+
+
+ router.post('/superadmin/add-user',Adduser)
+  router.get('/superadmin/get-user',GetAllUsers)
+  router.post('/superadmin/assign-projectadmin',asignprojectAdmin)
+  router.get ('/superadmin/get-assigned-users',GetAllUserFeatures)
+
+   router.post('/user-login',getUsers)
+   router.post('/user/get-projects',getProjectDetails)
 
 
 

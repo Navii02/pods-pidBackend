@@ -333,11 +333,12 @@ const DeleteProject = async (req, res) => {
 };
 
 const getprojects = async (req, res) => {
+      let connection;
   try {
-    let connection;
+
     connection = await pool.getConnection();
     const [row] = await connection.query("SELECT * FROM projects ");
-    console.log(row);
+   // console.log(row);
     res.status(200).json({ row });
   } catch (error) {
     res.status(500).json("Internal server error");
@@ -558,6 +559,52 @@ const updateSavedView = async (req, res) => {
     if (connection) connection.release();
   }
 };
+
+const getProjectDetails = async (req, res) => {
+  let connection;
+  
+  try {
+    // 1. Get project IDs from session storage (frontend would send these)
+    const { projectIds } = req.body;
+    console.log(req.body);
+    
+    if (!projectIds || !Array.isArray(projectIds)) {
+       res.status(400).json({
+        error: "projectIds array is required"
+      });
+    }
+
+    connection = await pool.getConnection();
+
+    // 2. Query database for these projects
+    const [projects] = await connection.query(`
+      SELECT 
+        projectId,
+        projectName,
+        projectNumber,
+        projectDescription
+      FROM projects
+      WHERE projectId IN (?)
+    `, [projectIds]);
+
+    if (projects.length === 0) {
+       res.status(404).json({
+        error: "No projects found with the provided IDs"
+      });
+    }
+
+     res.status(200).json(projects);
+
+  } catch (error) {
+    console.error("Database error:", error);
+     res.status(500).json({
+      error: "Failed to fetch project details",
+      details: error.message
+    });
+  } finally {
+    if (connection) connection.release(); // Fixed typo here (Release → release)
+  }
+};
 module.exports = {
   CreateProject,
   getprojects,
@@ -568,5 +615,6 @@ module.exports = {
   saveSavedView,
   AllSavedViews,
   deleteSavedView,
-  updateSavedView
+  updateSavedView,
+  getProjectDetails
 };

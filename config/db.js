@@ -467,8 +467,7 @@ CREATE TABLE IF NOT EXISTS user_features (
   projectId VARCHAR(255),
   userId VARCHAR(255) NOT NULL,
   feature VARCHAR(255) NOT NULL,
-  role VARCHAR(255) NOT NULL,
-  UNIQUE KEY unique_user_feature (userid, feature)
+  role VARCHAR(255) NOT NULL
 )ENGINE=InnoDB;`)
 
 const initializeProjectFeatures = async () => {
