@@ -7,7 +7,7 @@ const createTempPool = async () => {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     waitForConnections: true,
-      connectionLimit: 100,
+    connectionLimit: 100,
     queueLimit: 0,
   });
 };
@@ -44,7 +44,7 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
-    connectionLimit: 100,
+  connectionLimit: 100,
   queueLimit: 0,
   timezone: "Z",
   connectTimeout: 10000,
@@ -89,7 +89,7 @@ const createTables = async () => {
       FOREIGN KEY (document_id) REFERENCES Documents(documentId) ON DELETE CASCADE
     )ENGINE=InnoDB;`);
 
-await connection.query(`
+    await connection.query(`
 CREATE TABLE IF NOT EXISTS Tags (
     tagId VARCHAR(255) PRIMARY KEY,
     number VARCHAR(767) NOT NULL,
@@ -346,7 +346,7 @@ CREATE TABLE IF NOT EXISTS Tags (
   ) ENGINE=InnoDB;
 `);
 
-await connection.query(`
+    await connection.query(`
   CREATE TABLE IF NOT EXISTS CommentTable (
     fileid VARCHAR(100),
     docNumber VARCHAR(100),
@@ -386,16 +386,16 @@ await connection.query(`
   ) ENGINE=InnoDB;
 `);
 
-await connection.query(`CREATE TABLE IF NOT EXISTS GroundSettings (
+    await connection.query(`CREATE TABLE IF NOT EXISTS GroundSettings (
   id INT AUTO_INCREMENT PRIMARY KEY,
   projectId VARCHAR(36) NOT NULL,
   level DOUBLE,
   color VARCHAR(50),
   opacity DOUBLE,
   FOREIGN KEY (projectId) REFERENCES projects(projectId)
-) ENGINE=InnoDB;`)
+) ENGINE=InnoDB;`);
 
-await connection.query(`CREATE TABLE IF NOT EXISTS WaterSettings (
+    await connection.query(`CREATE TABLE IF NOT EXISTS WaterSettings (
   id INT AUTO_INCREMENT PRIMARY KEY,
   projectId VARCHAR(36) NOT NULL,
   level DOUBLE,
@@ -407,8 +407,8 @@ await connection.query(`CREATE TABLE IF NOT EXISTS WaterSettings (
   windForce DOUBLE,
   FOREIGN KEY (projectId) REFERENCES projects(projectId)
 ) ENGINE=InnoDB;
-`)
-await connection.query(`CREATE TABLE IF NOT EXISTS Views (
+`);
+    await connection.query(`CREATE TABLE IF NOT EXISTS Views (
   name VARCHAR(255) NOT NULL,
   projectId VARCHAR(36) NOT NULL,
   posX DOUBLE,
@@ -420,16 +420,15 @@ await connection.query(`CREATE TABLE IF NOT EXISTS Views (
   PRIMARY KEY (name, projectId),
   FOREIGN KEY (projectId) REFERENCES projects(projectId) ON DELETE CASCADE
 ) ENGINE=InnoDB;
-`)
+`);
 
-
-await connection.query(`CREATE TABLE IF NOT EXISTS SettingsTable (
+    await connection.query(`CREATE TABLE IF NOT EXISTS SettingsTable (
   projectId VARCHAR(36) NOT NULL PRIMARY KEY,
   settings TEXT
 ) ENGINE=InnoDB;
-`)
-// Store original meshes
-await connection.query(`
+`);
+    // Store original meshes
+    await connection.query(`
   CREATE TABLE IF NOT EXISTS OriginalMeshes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     MeshId VARCHAR(100),
@@ -439,8 +438,8 @@ await connection.query(`
   ) ENGINE=InnoDB;
 `);
 
-// Store octree
-await connection.query(`
+    // Store octree
+    await connection.query(`
   CREATE TABLE IF NOT EXISTS Octree (
     id INT AUTO_INCREMENT PRIMARY KEY,
     OctreeId VARCHAR(100),
@@ -450,8 +449,8 @@ await connection.query(`
   ) ENGINE=InnoDB;
 `);
 
-// Store merged meshes
-await connection.query(`
+    // Store merged meshes
+    await connection.query(`
   CREATE TABLE IF NOT EXISTS MergedMeshes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     MergedMeshId VARCHAR(100),
@@ -461,23 +460,23 @@ await connection.query(`
   ) ENGINE=InnoDB;
 `);
 
-await connection.query(`
+    await connection.query(`
 CREATE TABLE IF NOT EXISTS user_features (
   id INT AUTO_INCREMENT PRIMARY KEY,
   projectId VARCHAR(255),
   userId VARCHAR(255) NOT NULL,
   feature VARCHAR(255) NOT NULL,
   role VARCHAR(255) NOT NULL
-)ENGINE=InnoDB;`)
+)ENGINE=InnoDB;`);
 
-const initializeProjectFeatures = async () => {
-  let connection;
-  try {
-    connection = await pool.getConnection();
-    await connection.beginTransaction();
+    const initializeProjectFeatures = async () => {
+      let connection;
+      try {
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
 
-    // Create the table
-    await connection.query(`
+        // Create the table
+        await connection.query(`
       CREATE TABLE IF NOT EXISTS projectFeatures (
         feature_id INT AUTO_INCREMENT PRIMARY KEY,
         feature_name VARCHAR(255) UNIQUE,
@@ -485,43 +484,97 @@ const initializeProjectFeatures = async () => {
       ) ENGINE=InnoDB;
     `);
 
-    // Insert initial features
-    const initialFeatures = [
-      { name: 'linelist', description: 'Access to Line List functionality' },
-      { name: 'eqplist', description: 'Access to Equipment List functionality' },
-      { name: 'taglist', description: 'Access to Tag List functionality' },
-      { name: 'comment_table', description: 'Access to Comment Table functionality' },
-      { name: 'comment_status', description: 'Access to Comment Status functionality' },
-      { name: 'bulk_model', description: 'Access to Bulk Model functionality' },
-      { name: 'unassigned_model', description: 'Access to Unassigned Models functionality' },
-      { name: 'tag_info', description: 'Access to Tag Info functionality' },
-      { name: 'spid', description: 'Access to SPID functionality' },
-      { name: 'global_model', description: 'Access to Global Model functionality' }
-    ];
+        // Insert initial features
+        const initialFeatures = [
+          {
+            name: "line_list",
+            description: "Access to Line List functionality",
+          },
+          {
+            name: "equipment_list",
+            description: "Access to Equipment List functionality",
+          },
+          { name: "taglist", description: "Access to Tag List functionality" },
+          {
+            name: "comment",
+            description: "Access to Comment Table functionality",
+          },
+          
+          {
+            name: "bulk_model",
+            description: "Access to Bulk Model functionality",
+          },
+          {
+            name: "unassigned_tags",
+            description: "Access to Unassigned Models functionality",
+          },
+          { name: "tag_info", description: "Access to Tag Info functionality" },
+          { name: "spid", description: "Access to SPID functionality" },
+          {
+            name: "global_model",
+            description: "Access to Global Model functionality",
+          },
+          {
+            name: "documents",
+            description: "Access to documents functionality",
+          },
 
-    for (const feature of initialFeatures) {
-      await connection.query(`
+          {
+            name: "system",
+            description: "Access to system functionality",
+          },
+
+          {
+            name: "discipline",
+            description: "Access to discipline functionality",
+          },
+
+          {
+            name: "area",
+            description: "Access to area functionality",
+          },
+          {
+            name: "tree_management",
+            description: "Access to tree_management functionality",
+          },
+          {
+            name: "valve_list",
+            description: "Access to tree_management functionality",
+          },{
+            name: "color_management",
+            description: "Access to color_management functionality",
+          },
+          {
+            name: "iroamer",
+            description: "Access to iroamer functionality",
+          },
+        ];
+
+        for (const feature of initialFeatures) {
+          await connection.query(
+            `
         INSERT IGNORE INTO projectFeatures (feature_name, description)
         VALUES (?, ?)
-      `, [feature.name, feature.description]);
-    }
+      `,
+            [feature.name, feature.description]
+          );
+        }
 
-    await connection.commit();
-    console.log('Project features table initialized successfully');
-  } catch (error) {
-    if (connection) await connection.rollback();
-    console.error('Error initializing project features:', error);
-    throw error;
-  } finally {
-    if (connection) connection.release();
-  }
-};
+        await connection.commit();
+        console.log("Project features table initialized successfully");
+      } catch (error) {
+        if (connection) await connection.rollback();
+        console.error("Error initializing project features:", error);
+        throw error;
+      } finally {
+        if (connection) connection.release();
+      }
+    };
 
-// Call this function during your application startup
-initializeProjectFeatures().catch(console.error);
+    // Call this function during your application startup
+    initializeProjectFeatures().catch(console.error);
 
-
-  await connection.query(`CREATE TABLE IF NOT EXISTS Users (
+    await connection.query(`CREATE TABLE IF NOT EXISTS Users (
       userId VARCHAR(36) NOT NULL,
       username VARCHAR(100) NOT NULL UNIQUE,
       email VARCHAR(255) NOT NULL UNIQUE,
