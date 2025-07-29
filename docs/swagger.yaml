@@ -1,0 +1,102 @@
+openapi: 3.0.0
+info:
+  title: 🌿 PlantDesk API
+  version: 1.0.0
+  description: |
+    🚀 API documentation for the **PlantDesk Desktop App**  
+    This API handles project creation, equipment tagging, and more.
+  contact:
+    name: PlantDesk Dev Team
+    email: support@plantdesk.io
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5000
+
+
+paths:
+  /api/createproject:
+    post:
+      summary: Create a new project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                projectName:
+                  type: string
+                projectNumber:
+                  type: string
+                projectDescription:
+                  type: string
+                projectPath:
+                  type: string
+      responses:
+        '201':
+          description: Project created successfully
+        '409':
+          description: Project with this name already exists
+
+
+
+    /api/getproject:
+    get:
+      summary: Get all projects
+      responses:
+        '200':
+          description: List of projects        
+
+  /api/get-alltags/{id}:
+    get:
+      summary: Get all tags for a project
+      description: Returns a list of tags for a given project ID.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Project ID
+      responses:
+        '200':
+          description: Successfully retrieved tags
+        '404':
+          description: Project not found
+
+  /api/getline/{id}:
+    get:
+      summary: Get all line items for a project
+      description: Returns a list of lines for a given project ID.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Project ID
+      responses:
+        '200':
+          description: Successfully retrieved line items
+        '404':
+          description: Project not found
+
+  /api/getequipment/{id}:
+    get:
+      summary: Get all equipment for a project
+      description: Returns a list of equipment for a given project ID.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Project ID
+      responses:
+        '200':
+          description: Successfully retrieved equipment
+        '404':
+          description: Project not found

@@ -58,6 +58,7 @@ const {
   saveimportedLineList,
   saveimportedEquipmentList,
   saveimportedValveList,
+  GetAllModelsGot,
 } = require("../controllers/TagController");
 const {
   AddArea,
@@ -140,6 +141,7 @@ router.get(
   "/get-mesh-tag-by-project/:projectId/:filename",
   getTagByProjectAndFilename
 );
+router.get("/get-all-models/:projectId",GetAllModelsGot);
 
 router.get("/getline/:id", GetLineList);
 router.put("/edit-line-list", EditLineList);

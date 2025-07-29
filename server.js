@@ -4,6 +4,8 @@ const dotenv = require("dotenv");
 const path = require("path");
 const router = require("./Router/Routes");
 const bodyParser = require("body-parser");
+const swaggerUI = require('swagger-ui-express');
+const YAML = require('yamljs');
 const { initializeDatabase, createTables } = require("./config/db");
 
 dotenv.config();
@@ -13,10 +15,11 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "500mb" }));
 app.use(express.urlencoded({ limit: "500mb", extended: true }));
+const swaggerDocument = YAML.load('./docs/swagger.yaml');
 
 app.use("/api", router);
 app.use("/upload", express.static(path.join(__dirname, "documents")));
-
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument));
 app.use("/models/:projectId",(req, res, next) => {
     next();
   },(req, res, next) => {
@@ -30,6 +33,8 @@ app.use("/models/:projectId",(req, res, next) => {
 app.use('/octrees', express.static(path.join(__dirname, 'octrees')));
 app.use('/originalMeshes', express.static(path.join(__dirname, 'originalMeshes')));
 app.use('/mergedMeshes', express.static(path.join(__dirname, 'mergedMeshes')));
+
+
 
 // Add this BEFORE your static file middleware
 app.use((req, res, next) => {

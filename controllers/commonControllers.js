@@ -334,11 +334,12 @@ const DeleteProject = async (req, res) => {
 
 const getprojects = async (req, res) => {
       let connection;
+       
   try {
 
     connection = await pool.getConnection();
     const [row] = await connection.query("SELECT * FROM projects ");
-   // console.log(row);
+   console.log(row);
     res.status(200).json({ row });
   } catch (error) {
     res.status(500).json("Internal server error");

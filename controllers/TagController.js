@@ -97,9 +97,112 @@ const SaveUpdatedTagFile = async (req, res) => {
 };
 
 
+// const AddTag = async (req, res) => {
+//   let connection;
+//   const { tagNumber, parentTag, name, type, model, project_id } = req.body;
+//   console.log(req.body);
+  
+
+//   try {
+//     // Validate required fields
+//     if (!tagNumber || !name || !type) {
+//       return res
+//         .status(400)
+//         .json({ error: "tagNumber, name, and type are required" });
+//     }
+
+//     const tagId = generateCustomID("TAG-");
+//     connection = await pool.getConnection();
+//     await connection.beginTransaction();
+
+//     // 🟨 If model is provided, try to move it to /tags if not already there
+//     if (model) {
+//     const modelsDir = path.join(__dirname, "..", "models", project_id);
+//       const tagsDir = path.join(__dirname, "..", "tags", project_id);
+//       const sourceFile = path.join(modelsDir, model);
+//       const destFile = path.join(tagsDir, model);
+
+   
+
+//       try {
+//         // Check if target already exists
+//      // Create tags directory if it doesn't exist
+//         await fs.mkdir(tagsDir, { recursive: true });
+        
+//         // Check if source file exists
+//         await fs.access(sourceFile);
+        
+//         // Move the specific file
+//         await fs.rename(sourceFile, destFile);
+//       } catch (err) {
+//         if (err.code === 'ENOENT') {
+//           console.log(`File not found: ${sourceFile}`);
+//           // Continue without failing if file doesn't exist
+//         } else {
+//           throw err; // Re-throw unexpected errors
+//         }
+//       }
+//     }
+
+//     // ⬇ Insert into Tags table
+//     await connection.query(
+//       `INSERT INTO Tags (tagId, number, name, parenttag, type, filename, projectId)
+//        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+//       [tagId, tagNumber, name, parentTag || null, type, model || null, project_id]
+//     );
+
+//     await connection.query(
+//       `INSERT INTO TagInfo (projectId, tagId, tag, type)
+//        VALUES (?, ?, ?, ?)`,
+//       [project_id, tagId, name, type]
+//     );
+
+//     // ⬇ Insert based on type
+//     if (type.toLowerCase() === "line") {
+//       await connection.query(
+//         `INSERT INTO LineList (projectId, tagId, tag) VALUES (?, ?, ?)`,
+//         [project_id, tagId, name]
+//       );
+//     } else if (type.toLowerCase() === "equipment") {
+//       await connection.query(
+//         `INSERT INTO EquipmentList (projectId, tagId, tag) VALUES (?, ?, ?)`,
+//         [project_id, tagId, name]
+//       );
+//     } else if (type.toLowerCase() === "valve") {
+//       await connection.query(
+//         `INSERT INTO ValveList (projectId, tagId, tag) VALUES (?, ?, ?)`,
+//         [project_id, tagId, name]
+//       );
+//     }
+
+//     await connection.commit();
+//     res.status(201).json({ message: "Tag added successfully", tagId });
+
+//   } catch (error) {
+//     if (connection) await connection.rollback();
+//     console.error("Error adding tag:", error.message);
+//     res.status(500).json({ error: "Internal server error" });
+//   } finally {
+//     if (connection) connection.release();
+//   }
+// };
+
 const AddTag = async (req, res) => {
   let connection;
-  const { tagNumber, parentTag, name, type, model, project_id } = req.body;
+    const { 
+    tagNumber, 
+    name, 
+    type, 
+    parentTag, 
+    model,
+    area, 
+    areaName, 
+    discipline, 
+    disciplineName, 
+    system, 
+    systemName, 
+    project_id 
+  } = req.body;
   console.log(req.body);
   
 
@@ -111,7 +214,6 @@ const AddTag = async (req, res) => {
         .json({ error: "tagNumber, name, and type are required" });
     }
 
-    const tagId = generateCustomID("TAG-");
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
@@ -144,6 +246,128 @@ const AddTag = async (req, res) => {
       }
     }
 
+
+    let areaId = null;
+    let discId = null;
+    let sysId = null;
+
+    // 1. Handle Area creation/verification
+    if (area && areaName) {
+      // Check if area exists in Areatable
+      const [existingArea] = await connection.query(
+        `SELECT areaId FROM Areatable WHERE area = ? AND project_id = ?`,
+        [area, project_id]
+      );
+
+      if (existingArea.length > 0) {
+        areaId = existingArea[0].areaId;
+      } else {
+        // Create new area
+        areaId = generateCustomID("A-");
+        await connection.query(
+          `INSERT INTO Areatable (areaId, area, name, project_id) VALUES (?, ?, ?, ?)`,
+          [areaId, area, areaName, project_id]
+        );
+      }
+
+      // Ensure area exists in Tree table
+      const [existingAreaTree] = await connection.query(
+        `SELECT id FROM Tree WHERE area = ? AND project_id = ? AND disc IS NULL AND sys IS NULL AND tag IS NULL`,
+        [area, project_id]
+      );
+
+      if (existingAreaTree.length === 0) {
+        await connection.query(
+          `INSERT INTO Tree (area, name, project_id) VALUES (?, ?, ?)`,
+          [area, areaName, project_id]
+        );
+      }
+    }
+
+    // 2. Handle Discipline creation/verification
+    if (discipline && disciplineName && area) {
+      // Check if discipline exists in Disctable
+      const [existingDisc] = await connection.query(
+        `SELECT discId FROM Disctable WHERE disc = ? AND project_id = ?`,
+        [discipline, project_id]
+      );
+
+      if (existingDisc.length > 0) {
+        discId = existingDisc[0].discId;
+      } else {
+        // Create new discipline
+        discId = generateCustomID("D-");
+        await connection.query(
+          `INSERT INTO Disctable (discId, disc, name, project_id) VALUES (?, ?, ?, ?)`,
+          [discId, discipline, disciplineName, project_id]
+        );
+      }
+
+      // Ensure discipline exists in Tree table
+      const [existingDiscTree] = await connection.query(
+        `SELECT id FROM Tree WHERE area = ? AND disc = ? AND project_id = ? AND sys IS NULL AND tag IS NULL`,
+        [area, discipline, project_id]
+      );
+
+      if (existingDiscTree.length === 0) {
+        await connection.query(
+          `INSERT INTO Tree (area, disc, name, project_id) VALUES (?, ?, ?, ?)`,
+          [area, discipline, disciplineName, project_id]
+        );
+      }
+    }
+
+    // 3. Handle System creation/verification
+    if (system && systemName && area && discipline) {
+      // Check if system exists in Systable
+      const [existingSys] = await connection.query(
+        `SELECT sysId FROM Systable WHERE sys = ? AND project_id = ?`,
+        [system, project_id]
+      );
+
+      if (existingSys.length > 0) {
+        sysId = existingSys[0].sysId;
+      } else {
+        // Create new system
+        sysId = generateCustomID("S-");
+        await connection.query(
+          `INSERT INTO Systable (sysId, sys, name, project_id) VALUES (?, ?, ?, ?)`,
+          [sysId, system, systemName, project_id]
+        );
+      }
+
+      // Ensure system exists in Tree table
+      const [existingSysTree] = await connection.query(
+        `SELECT id FROM Tree WHERE area = ? AND disc = ? AND sys = ? AND project_id = ? AND tag IS NULL`,
+        [area, discipline, system, project_id]
+      );
+
+      if (existingSysTree.length === 0) {
+        await connection.query(
+          `INSERT INTO Tree (area, disc, sys, name, project_id) VALUES (?, ?, ?, ?, ?)`,
+          [area, discipline, system, systemName, project_id]
+        );
+      }
+    }
+
+
+     // 🚨 Check if tag number already exists in the project
+    const [existingTag] = await connection.query(
+      `SELECT tagId, number FROM Tags WHERE number = ? AND projectId = ?`,
+      [tagNumber, project_id]
+    );
+
+    if (existingTag.length > 0) {
+      await connection.rollback();
+      return res.status(409).json({ 
+        error: "Tag number already exists in this project",
+        details: `Tag number '${tagNumber}' is already registered in project '${project_id}'`,
+        existingTagId: existingTag[0].tagId
+      });
+    }
+
+    const tagId = generateCustomID("TAG-");
+
     // ⬇ Insert into Tags table
     await connection.query(
       `INSERT INTO Tags (tagId, number, name, parenttag, type, filename, projectId)
@@ -156,7 +380,12 @@ const AddTag = async (req, res) => {
        VALUES (?, ?, ?, ?)`,
       [project_id, tagId, name, type]
     );
-
+ if (area && discipline && system) {
+      await connection.query(
+        `INSERT INTO Tree (area, disc, sys, tag, name, project_id) VALUES (?, ?, ?, ?, ?, ?)`,
+        [area, discipline, system, tagNumber, name, project_id]
+      );
+    }
     // ⬇ Insert based on type
     if (type.toLowerCase() === "line") {
       await connection.query(
@@ -188,20 +417,33 @@ const AddTag = async (req, res) => {
 };
 
 
+
 const getTags = async (req, res) => {
   const projectId = req.params.id;
   let connection;
   try {
     connection = await pool.getConnection();
+    
+    // Join Tags with Tree table to get area, disc, sys
     const [Tags] = await connection.query(
-      "SELECT * from Tags WHERE projectId = ?",
+      `SELECT 
+        t.*,
+        tr.area,
+        tr.disc as discipline,
+        tr.sys as \`system\`
+      FROM Tags t 
+      LEFT JOIN Tree tr ON t.number = tr.tag AND t.projectId = tr.project_id 
+      WHERE t.projectId = ?
+      ORDER BY t.number`,
       [projectId]
     );
+    
     res.status(200).json(Tags);
   } catch (error) {
+    console.error("Error fetching tags with tree data:", error);
     res.status(500).json("Internal server error");
   } finally {
-    connection.release();
+    if (connection) connection.release();
   }
 };
 
@@ -2368,6 +2610,202 @@ const createNewValveTag = async (connection, valveData, projectId) => {
   }
 };
 
+const GetAllModelsGot=async(req,res)=>{
+  let connection;
+  try {
+    const { projectId } = req.params;
+    const { areas, discs, systems, tags } = req.query;
+
+    // Validate projectId
+    if (!projectId) {
+      return res.status(400).json({
+        status: 400,
+        message: 'Project ID is required'
+      });
+    }
+
+    connection = await pool.getConnection();
+
+    // Build dynamic WHERE clause based on filters
+    let whereConditions = ['t.projectId = ?'];
+    let queryParams = [projectId];
+
+    // Add area filter
+    if (areas) {
+      const areaList = areas.split(',').map(area => area.trim());
+      const areaPlaceholders = areaList.map(() => '?').join(',');
+      whereConditions.push(`tr.area IN (${areaPlaceholders})`);
+      queryParams.push(...areaList);
+    }
+
+    // Add disc filter
+    if (discs) {
+      const discList = discs.split(',').map(disc => disc.trim());
+      const discPlaceholders = discList.map(() => '?').join(',');
+      whereConditions.push(`tr.disc IN (${discPlaceholders})`);
+      queryParams.push(...discList);
+    }
+
+    // Add system filter
+    if (systems) {
+      const systemList = systems.split(',').map(sys => sys.trim());
+      const systemPlaceholders = systemList.map(() => '?').join(',');
+      whereConditions.push(`tr.sys IN (${systemPlaceholders})`);
+      queryParams.push(...systemList);
+    }
+
+    // Add tag filter
+    if (tags) {
+      const tagList = tags.split(',').map(tag => tag.trim());
+      const tagPlaceholders = tagList.map(() => '?').join(',');
+      whereConditions.push(`tr.tag IN (${tagPlaceholders})`);
+      queryParams.push(...tagList);
+    }
+
+    // Construct the main query based on actual schema
+    const query = `
+      SELECT 
+        t.tagId,
+        t.number as tag,
+        t.name as tagName,
+        t.type,
+        t.filename,
+        t.projectId,
+        tr.area,
+        tr.disc,
+        tr.sys,
+        tr.name as treeName,
+        -- Line list information
+        ll.fluidCode,
+        ll.medium,
+        ll.lineSizeIn,
+        ll.lineSizeNb,
+        ll.pipingSpec,
+        ll.insType,
+        ll.insThickness,
+        ll.heatTrace,
+        ll.lineFrom,
+        ll.lineTo,
+        ll.pnid as linePnid,
+        ll.maxOpPress,
+        ll.maxOpTemp,
+        ll.dsgnPress,
+        ll.minDsgnTemp,
+        ll.maxDsgnTemp,
+        ll.testPress,
+        ll.testMedium,
+        ll.testMediumPhase,
+        ll.massFlow,
+        ll.volFlow,
+        ll.density,
+        ll.velocity,
+        ll.paintSystem,
+        ll.ndtGroup,
+        ll.chemCleaning,
+        ll.pwht,
+        -- Equipment list information
+        el.descr as equipmentDescription,
+        el.qty as equipmentQuantity,
+        el.capacity as equipmentCapacity,
+        el.type as equipmentType,
+        el.materials as equipmentMaterials,
+        el.capacityDuty,
+        el.dims as equipmentDimensions,
+        el.dsgnPress as equipmentDsgnPress,
+        el.opPress as equipmentOpPress,
+        el.dsgnTemp as equipmentDsgnTemp,
+        el.opTemp as equipmentOpTemp,
+        el.dryWeight,
+        el.opWeight,
+        el.pnid as equipmentPnid,
+        el.supplier,
+        el.remarks,
+        el.initStatus,
+        el.revision,
+        el.revisionDate,
+        -- Tag info (first 16 fields commonly used)
+        ti.taginfo1,
+        ti.taginfo2,
+        ti.taginfo3,
+        ti.taginfo4,
+        ti.taginfo5,
+        ti.taginfo6,
+        ti.taginfo7,
+        ti.taginfo8,
+        ti.taginfo9,
+        ti.taginfo10,
+        ti.taginfo11,
+        ti.taginfo12,
+        ti.taginfo13,
+        ti.taginfo14,
+        ti.taginfo15,
+        ti.taginfo16
+      FROM Tags t
+      INNER JOIN Tree tr ON t.number = tr.tag AND t.projectId = tr.project_id
+      LEFT JOIN LineList ll ON t.tagId = ll.tagId
+      LEFT JOIN EquipmentList el ON t.tagId = el.tagId
+      LEFT JOIN TagInfo ti ON t.tagId = ti.tagId
+      WHERE ${whereConditions.join(' AND ')}
+      ORDER BY tr.area, tr.disc, tr.sys, tr.tag
+    `;
+
+    // Execute the query
+    const [results] = await connection.execute(query, queryParams);
+
+    // Transform the results to match expected frontend format
+    const formattedResults = results.map(row => ({
+      tagId: row.tagId,
+      tag: row.tag,
+      area: row.area,
+      disc: row.disc,
+      sys: row.sys,
+      filename: row.filename,
+      projectId: row.projectId,
+      name: row.tagName,
+      type: row.type,
+      
+      // File information (simulated based on filename)
+      file: row.filename ? {
+        filename: row.filename,
+        originalName: row.filename,
+        // You might want to add actual file table or compute these
+        size: null,
+        mimeType: row.filename.endsWith('.glb') ? 'model/gltf-binary' : null,
+        uploadPath: `/uploads/tags/${row.projectId}/`,
+        created: null,
+        modified: null,
+        accessed: null
+      } : null,
+
+   
+    }));
+
+    res.status(200).json({
+      status: 200,
+      message: 'Models retrieved successfully',
+      data: formattedResults,
+      count: formattedResults.length,
+      filters: {
+        projectId,
+        areas: areas ? areas.split(',') : null,
+        discs: discs ? discs.split(',') : null,
+        systems: systems ? systems.split(',') : null,
+        tags: tags ? tags.split(',') : null
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching models:', error);
+    res.status(500).json({
+      status: 500,
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+}
+
 
 module.exports = {
   AddTag,
@@ -2399,5 +2837,6 @@ module.exports = {
   ClearEditableEquipmentFields,
   saveimportedLineList,
   saveimportedEquipmentList,
-  saveimportedValveList
+  saveimportedValveList,
+  GetAllModelsGot
 };
