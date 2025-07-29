@@ -601,6 +601,44 @@ CREATE TABLE IF NOT EXISTS user_features (
   }
 };
 
+const insertHardcodedAdminUser = async()=> {
+    let connection;
+      try {
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+    const userId = 'f3ffcddc-efd9-4325-b91f-89bbe37262d9'; 
+    const username = 'plantdeskservice';
+    const email = 'plantdeskservice@poulconsult.com'
+    const token = 'e773661717d3ce15b0044d0ada76ac134f2500a418968cf54c1e9974b3bf17f2';
+    const role = 'admin';
+
+    const [existing] = await connection.query(
+      'SELECT userId FROM Users WHERE userId = ?',
+      [userId]
+    );
+
+    if (existing.length === 0) {
+      await connection.query(
+        `INSERT INTO Users (
+          userId, username, email, token, role
+        ) VALUES (?, ?, ?, ?, ?)`,
+        [userId, username, email, token, role]
+      );
+      console.log('✅ Hardcoded admin user inserted.');
+    } else {
+      console.log('ℹ️ Admin user already exists. Skipping insertion.');
+    }
+  } catch (error) {
+    console.error('❌ Failed to insert admin user:', error.message);
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+    insertHardcodedAdminUser().catch(console.error);
+
+
 pool.on("acquire", (connection) => {
   //console.log("Connection acquired:", connection.threadId);
 });
